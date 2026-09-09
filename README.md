@@ -1,68 +1,85 @@
 # Bank Mini Sekolah
 
-##  Tentang Project
+## Tentang Project
 
-Bank Mini Sekolah merupakan aplikasi berbasis web yang sedang
-dikembangkan untuk membantu proses pengelolaan kegiatan Bank Mini
+Bank Mini Sekolah merupakan aplikasi berbasis web yang dikembangkan
+menggunakan Laravel untuk mendukung pengelolaan kegiatan Bank Mini
 di lingkungan sekolah.
 
-Project ini dibuat sebagai penerapan kompetensi Rekayasa Perangkat
-Lunak, khususnya dalam pengembangan aplikasi web, pengelolaan
-database, serta penerapan framework Laravel.
+## Status Project
 
-##  Status Project
+In Progress — Sedang Dikembangkan
 
-**In Progress — Sedang Dikembangkan**
+Project masih dalam tahap pengembangan, pengujian, dan revisi.
 
-Project ini masih dalam tahap pengembangan dan penyempurnaan.
-Beberapa fitur masih mengalami revisi, perbaikan, dan pengembangan
-lebih lanjut.
-
-##  Tujuan
+## Tujuan
 
 Project ini bertujuan untuk:
 
 - Menerapkan konsep pemrograman website.
-- Mempelajari dan menerapkan framework Laravel.
-- Menerapkan pengelolaan database menggunakan MySQL.
-- Memahami proses pengembangan sistem informasi.
-- Meningkatkan kemampuan dalam membuat aplikasi berbasis web.
+- Mempelajari framework Laravel.
+- Menerapkan pengelolaan database.
+- Menerapkan autentikasi dan otorisasi.
+- Meningkatkan kemampuan dalam pengembangan sistem informasi.
 
-##  Teknologi yang Digunakan
+## Teknologi yang Digunakan
 
 - PHP
 - Laravel
+- Laravel Sanctum
 - MySQL
+- Blade
 - HTML
 - CSS
 - JavaScript
-- Blade
-- Git & GitHub
+- REST API
+- Git
+- GitHub
 
-##  Kompetensi yang Diterapkan
+## Fitur
+
+### Admin
+- Pengelolaan pengguna
+- Pengelolaan data nasabah
+- Pengelolaan role pengguna
+- Audit jurnal transaksi
+
+### Teller
+- Pencarian nasabah
+- Setoran tunai
+- Penarikan tunai
+- Validasi PIN
+- Riwayat transaksi
+- Closing kas
+
+### Supervisor
+- Pemeriksaan closing teller
+- Audit closing
+- Persetujuan closing teller
+
+### Customer
+- Melihat saldo
+- Melihat riwayat transaksi
+
+## Kompetensi yang Diterapkan
 
 - Pemrograman Website
 - Basis Data
 - Analisa dan Perancangan Sistem
-- CRUD
-- Relasi Database
+- Pemrograman Berorientasi Objek
+- REST API
 - Autentikasi dan Otorisasi
-- Pengembangan Sistem Informasi
+- CRUD
+- Git dan GitHub
 
-##  Pengembangan
+## Pengembangan
 
-Project masih terus dikembangkan. Pengembangan dilakukan secara
-bertahap dengan melakukan penambahan fitur, perbaikan sistem,
-penyempurnaan tampilan, serta revisi berdasarkan hasil pengujian.
+Project masih dalam tahap pengembangan. Beberapa fitur dan
+tampilan masih dalam proses penyempurnaan dan pengujian.
 
-##  Developer
+## Developer
 
-**Esa Nur'udzri Yunan Arifianto**
+Esa Nur'udzri Yunan Arifianto
 
-Siswa XII Rekayasa Perangkat Lunak  
+Siswa XII Rekayasa Perangkat Lunak
 SMK Negeri 1 Bantul
-
-##  Catatan
-
-Project ini merupakan project pembelajaran dan pengembangan
-kompetensi Rekayasa Perangkat Lunak.
