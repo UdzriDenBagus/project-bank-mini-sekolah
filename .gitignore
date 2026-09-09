@@ -9,3 +9,5 @@ Soal UKK_Bank Mini.docx.pdf
 .env
 .env.backup
 .env.production
+
+/vendor/
