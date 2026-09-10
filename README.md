@@ -83,3 +83,14 @@ Esa Nur'udzri Yunan Arifianto
 
 Siswa XII Rekayasa Perangkat Lunak
 SMK Negeri 1 Bantul
+
+## Cara Menjalankan Project
+
+1. Clone repository
+2. Masuk ke folder project
+3. Install dependency
+4. Buat file .env
+5. Atur konfigurasi database
+6. Generate application key
+7. Jalankan migration
+8. Jalankan server Laravel
