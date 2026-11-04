@@ -156,7 +156,7 @@ class AdminController extends Controller
             'name'            => 'required|string|max:100',
             'class_name'      => 'required|string|max:50',
             'email'           => 'nullable|email|max:100',
-            'graduation_year' => 'required|digits:4|integer',
+            'graduation_year' => 'nullable|digits:4|integer',
             'password'        => 'nullable|string|min:6',
         ]);
 
@@ -164,12 +164,16 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
+        $gradYear = $request->filled('graduation_year') && (int)$request->graduation_year >= 2020
+            ? (int)$request->graduation_year
+            : Member::calculateGraduationYear($request->class_name);
+
         $member = Member::create([
             'nis'             => $request->nis,
             'name'            => $request->name,
             'class_name'      => $request->class_name,
             'email'           => $request->email,
-            'graduation_year' => $request->graduation_year,
+            'graduation_year' => $gradYear,
             'password'        => $request->filled('password') ? Hash::make($request->password) : null,
             'status'          => 'inactive_account',
         ]);
@@ -365,13 +369,7 @@ class AdminController extends Controller
                     continue;
                 }
 
-                $currentYear = (int)date('Y');
-                $gradYear = $currentYear + 2;
-                if (preg_match('/\b(11|XI)\b/i', $class)) {
-                    $gradYear = $currentYear + 1;
-                } elseif (preg_match('/\b(12|XII)\b/i', $class)) {
-                    $gradYear = $currentYear;
-                }
+                $gradYear = Member::calculateGraduationYear($class);
 
                 Member::create([
                     'nis'             => $nis,
@@ -421,7 +419,7 @@ class AdminController extends Controller
             'name'            => 'required|string|max:100',
             'class_name'      => 'required|string|max:50',
             'email'           => 'nullable|email|max:100',
-            'graduation_year' => 'required|digits:4|integer',
+            'graduation_year' => 'nullable|digits:4|integer',
             'password'        => 'nullable|string|min:6',
         ]);
 
@@ -429,7 +427,10 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $dataUpdate = $request->only(['nis', 'name', 'class_name', 'graduation_year', 'email']);
+        $dataUpdate = $request->only(['nis', 'name', 'class_name', 'email']);
+        $dataUpdate['graduation_year'] = $request->filled('graduation_year') && (int)$request->graduation_year >= 2020
+            ? (int)$request->graduation_year
+            : Member::calculateGraduationYear($request->class_name);
         if ($request->filled('password')) {
             $dataUpdate['password'] = Hash::make($request->password);
         }

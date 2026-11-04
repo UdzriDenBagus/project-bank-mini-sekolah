@@ -771,19 +771,58 @@
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kelas / Jurusan</label>
-                <input type="text" id="addMemberClass" required placeholder="Contoh: XII RPL 1" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <input type="text" id="addMemberClass" oninput="autoCalculateAddGradYear()" required placeholder="Contoh: X RPL 1" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <span class="text-[10px] text-slate-400 mt-0.5 block">Format: X / XI / XII (Tahun kelulusan di bawah otomatis terhitung)</span>
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email Siswa (Gmail untuk Reset Password/PIN)</label>
                 <input type="email" id="addMemberEmail" placeholder="nama.siswa@gmail.com (opsional)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tahun Lulus / Angkatan</label>
-                <input type="number" id="addMemberGradYear" required value="{{ date('Y') }}" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tahun Lulus (3 Tahun Masa Studi)</label>
+                <input type="number" id="addMemberGradYear" required value="{{ (int)date('Y') + 2 }}" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                <span class="text-[10px] text-slate-400 mt-0.5 block">Kelas X = {{ (int)date('Y') + 2 }}, Kelas XI = {{ (int)date('Y') + 1 }}, Kelas XII = {{ (int)date('Y') }}</span>
             </div>
             <div class="flex justify-end space-x-2 pt-3">
                 <button type="button" onclick="closeModal('modalAddMember')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Batal</button>
                 <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow">Simpan Anggota</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edit Anggota Siswa (Ubah Kelas & Tahun Lulus) -->
+<div id="modalEditMember" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <h3 class="font-black text-slate-800 text-lg flex items-center"> Ubah Data Anggota Siswa
+        </h3>
+        <form onsubmit="submitEditMember(event)" class="space-y-3">
+            <input type="hidden" id="editMemberId">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor Induk Siswa (NIS)</label>
+                <input type="text" id="editMemberNis" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap Siswa</label>
+                <input type="text" id="editMemberName" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kelas / Jurusan</label>
+                <input type="text" id="editMemberClass" oninput="autoCalculateEditGradYear()" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <span class="text-[10px] text-slate-400 mt-0.5 block">Format: X / XI / XII (Tahun kelulusan di bawah otomatis terhitung)</span>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email Siswa (Gmail)</label>
+                <input type="email" id="editMemberEmail" placeholder="nama.siswa@gmail.com" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tahun Lulus (3 Tahun Masa Studi)</label>
+                <input type="number" id="editMemberGradYear" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                <span class="text-[10px] text-slate-400 mt-0.5 block">Kelas X = {{ (int)date('Y') + 2 }}, Kelas XI = {{ (int)date('Y') + 1 }}, Kelas XII = {{ (int)date('Y') }}</span>
+            </div>
+            <div class="flex justify-end space-x-2 pt-3">
+                <button type="button" onclick="closeModal('modalEditMember')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow">Simpan Perubahan</button>
             </div>
         </form>
     </div>
@@ -1459,6 +1498,8 @@
                         </span>
                     </td>
                     <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+                        <button onclick='openEditMemberModal(${JSON.stringify(m)})' class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition" title="Ubah Data Siswa (Nama, Kelas, Tahun Lulus)"> Edit
+                        </button>
                         <button onclick="editMemberEmail(${m.id}, '${safeName}', '${(m.email || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition" title="Ubah atau Daftarkan Gmail Siswa"> Email
                         </button>
                         <button onclick="openHoldBackModal(${m.id}, '${safeName}', '${m.nis}', '${safeClass}', ${m.graduation_year || new Date().getFullYear()}, ${isActive})" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-bold transition inline-flex items-center" title="Tinggal Kelas / Tidak Naik Kelas"> Tinggal Kelas
@@ -1647,6 +1688,74 @@
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal Menambah Anggota',
+                text: (res && res.data && res.data.errors) ? Object.values(res.data.errors)[0][0] : ((res && res.data && res.data.message) || 'Terjadi kesalahan')
+            });
+        }
+    }
+
+    function autoCalculateAddGradYear() {
+        const val = (document.getElementById('addMemberClass').value || '').trim();
+        const currentYear = new Date().getFullYear();
+        let gradYear = currentYear + 2;
+        if (/\b(12|XII)\b/i.test(val) || /^12|^XII/i.test(val)) {
+            gradYear = currentYear;
+        } else if (/\b(11|XI)\b/i.test(val) || /^11|^XI/i.test(val)) {
+            gradYear = currentYear + 1;
+        } else if (/\b(10|X)\b/i.test(val) || /^10|^X/i.test(val)) {
+            gradYear = currentYear + 2;
+        }
+        document.getElementById('addMemberGradYear').value = gradYear;
+    }
+
+    function openEditMemberModal(m) {
+        document.getElementById('editMemberId').value = m.id;
+        document.getElementById('editMemberNis').value = m.nis;
+        document.getElementById('editMemberName').value = m.name;
+        document.getElementById('editMemberClass').value = m.class_name;
+        document.getElementById('editMemberEmail').value = m.email || '';
+        document.getElementById('editMemberGradYear').value = m.graduation_year || 2028;
+        openModal('modalEditMember');
+    }
+
+    function autoCalculateEditGradYear() {
+        const val = (document.getElementById('editMemberClass').value || '').trim();
+        const currentYear = new Date().getFullYear();
+        let gradYear = currentYear + 2;
+        if (/\b(12|XII)\b/i.test(val) || /^12|^XII/i.test(val)) {
+            gradYear = currentYear;
+        } else if (/\b(11|XI)\b/i.test(val) || /^11|^XI/i.test(val)) {
+            gradYear = currentYear + 1;
+        } else if (/\b(10|X)\b/i.test(val) || /^10|^X/i.test(val)) {
+            gradYear = currentYear + 2;
+        }
+        document.getElementById('editMemberGradYear').value = gradYear;
+    }
+
+    async function submitEditMember(e) {
+        e.preventDefault();
+        const id = document.getElementById('editMemberId').value;
+        const payload = {
+            nis: document.getElementById('editMemberNis').value.trim(),
+            name: document.getElementById('editMemberName').value.trim(),
+            class_name: document.getElementById('editMemberClass').value.trim(),
+            graduation_year: document.getElementById('editMemberGradYear').value,
+            email: document.getElementById('editMemberEmail').value.trim() || null,
+        };
+
+        const res = await fetchAPI(`/admin/members/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        if (res && res.data && res.data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Data Siswa Diperbarui!',
+                text: res.data.message,
+                confirmButtonColor: '#4f46e5'
+            });
+            closeModal('modalEditMember');
+            loadMembers();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Memperbarui Siswa',
                 text: (res && res.data && res.data.errors) ? Object.values(res.data.errors)[0][0] : ((res && res.data && res.data.message) || 'Terjadi kesalahan')
             });
         }

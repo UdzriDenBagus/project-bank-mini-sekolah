@@ -54,6 +54,39 @@ class Member extends Authenticatable
     }
 
     /**
+     * Hitung tahun kelulusan otomatis berdasarkan jenjang kelas (Masa studi SMK 3 tahun):
+     * - Kelas X (10)  : currentYear + 2 (Tahun ke-1, lulus 2 tahun lagi -> contoh: 2026 + 2 = 2028)
+     * - Kelas XI (11) : currentYear + 1 (Tahun ke-2, lulus 1 tahun lagi -> contoh: 2026 + 1 = 2027)
+     * - Kelas XII (12): currentYear     (Tahun ke-3 / tingkat akhir, lulus tahun ini -> 2026)
+     */
+    public static function calculateGraduationYear(?string $className, ?int $baseYear = null): int
+    {
+        $currentYear = $baseYear ?: (int)date('Y');
+        if (empty($className)) {
+            return $currentYear + 2;
+        }
+
+        $trimmed = trim($className);
+
+        // Kelas 12 / XII atau Alumni: lulus tahun berjalan (currentYear)
+        if (preg_match('/\b(12|XII|Lulus|Alumni)\b/i', $trimmed) || preg_match('/^(12|XII)\b/i', $trimmed)) {
+            return $currentYear;
+        }
+
+        // Kelas 11 / XI: lulus 1 tahun berikutnya (currentYear + 1)
+        if (preg_match('/\b(11|XI)\b/i', $trimmed) || preg_match('/^(11|XI)\b/i', $trimmed)) {
+            return $currentYear + 1;
+        }
+
+        // Kelas 10 / X: siswa baru 3 tahun masa studi, lulus 2 tahun berikutnya (currentYear + 2)
+        if (preg_match('/\b(10|X)\b/i', $trimmed) || preg_match('/^(10|X)\b/i', $trimmed)) {
+            return $currentYear + 2;
+        }
+
+        return $currentYear + 2;
+    }
+
+    /**
      * Cek apakah kelas merupakan tingkat akhir (Kelas 12 / XII)
      */
     public static function isFinalGrade(?string $className): bool
