@@ -54,6 +54,27 @@ class Member extends Authenticatable
     }
 
     /**
+     * Mendapatkan Tahun Ajaran (Academic Year) berdasarkan siklus kalender sekolah Indonesia (Juni - Juni):
+     * Contoh:
+     * - Periode 1 Juni 2025 s.d. 31 Mei 2026 = Tahun Ajaran "2025/2026"
+     * - Periode 1 Juni 2026 s.d. 31 Mei 2027 = Tahun Ajaran "2026/2027"
+     */
+    public static function getAcademicYear($date = null): string
+    {
+        $dt = $date ? \Carbon\Carbon::parse($date) : now();
+        $year = (int)$dt->year;
+        $month = (int)$dt->month;
+
+        // Bulan Juni (6) ke atas masuk periode awal Tahun Ajaran Baru (Juni s.d. Desember)
+        // Bulan Januari s.d. Mei (1 s.d. 5) merupakan periode semester genap Tahun Ajaran berjalan
+        if ($month >= 6) {
+            return "{$year}/" . ($year + 1);
+        } else {
+            return ($year - 1) . "/{$year}";
+        }
+    }
+
+    /**
      * Hitung tahun kelulusan otomatis berdasarkan jenjang kelas (Masa studi SMK 3 tahun):
      * - Kelas X (10)  : currentYear + 2 (Tahun ke-1, lulus 2 tahun lagi -> contoh: 2026 + 2 = 2028)
      * - Kelas XI (11) : currentYear + 1 (Tahun ke-2, lulus 1 tahun lagi -> contoh: 2026 + 1 = 2027)

@@ -47,6 +47,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/members/template', [AdminController::class, 'downloadMemberTemplate']);
     Route::post('/members/import-excel', [AdminController::class, 'importMembersExcel']);
     Route::post('/members/promote-july', [AdminController::class, 'triggerJulyPromotion']);
+    Route::post('/members/promote-june', [AdminController::class, 'triggerJulyPromotion']);
+    Route::post('/members/promote-annual', [AdminController::class, 'triggerJulyPromotion']);
     Route::get('/members', [AdminController::class, 'indexMembers']);
     Route::post('/members', [AdminController::class, 'storeMember']);
     Route::post('/members/{id}/activate', [AdminController::class, 'activateMember']);

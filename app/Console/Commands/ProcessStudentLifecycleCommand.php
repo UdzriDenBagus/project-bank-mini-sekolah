@@ -18,21 +18,23 @@ class ProcessStudentLifecycleCommand extends Command
         $currentMonth = (int) now()->month;
         $currentYear = (int) now()->year;
 
-        // 1. Kenaikan kelas tahunan & kelulusan setiap bulan Juli
+        // 1. Kenaikan kelas tahunan & kelulusan setiap akhir tahun ajaran (Bulan Juni)
         $promotedCount = 0;
-        if ($force || $currentMonth >= 7) {
+        $currentAcademicYear = Member::getAcademicYear(now());
+        if ($force || $currentMonth >= 6) {
             $activeMembers = Member::whereNull('deleted_at')->get();
 
             foreach ($activeMembers as $m) {
-                if (Member::isGraduated($m->class_name)) {
+                if (Member::isGraduated($m->class_name) || $m->status === 'graduated') {
                     continue;
                 }
 
-                if (!$force && $m->created_at && $m->created_at->format('Y-m') >= now()->format('Y-07')) {
+                if (!$force && $m->created_at && $m->created_at->format('Y-m') >= now()->format('Y-m')) {
                     continue;
                 }
 
-                if (!$force && $m->last_promoted_at && $m->last_promoted_at->year >= $currentYear) {
+                // Cek apakah sudah pernah dinaikkan pada periode Tahun Ajaran ini (Juni - Juni)
+                if (!$force && $m->last_promoted_at && Member::getAcademicYear($m->last_promoted_at) === $currentAcademicYear) {
                     continue;
                 }
 
@@ -45,21 +47,33 @@ class ProcessStudentLifecycleCommand extends Command
                     'last_promoted_at'     => now(),
                 ];
 
-                if (Member::isGraduated($newClass)) {
+                $isNowGraduated = Member::isGraduated($newClass);
+                if ($isNowGraduated) {
                     $updateData['graduation_year'] = $currentYear;
+                    $updateData['status'] = 'graduated';
                 }
 
                 $m->update($updateData);
 
                 if ($m->saver) {
-                    $m->saver->update(['class_name' => $newClass]);
+                    $m->saver->update([
+                        'class_name' => $newClass,
+                        'status'     => $isNowGraduated ? 'inactive' : $m->saver->status
+                    ]);
+                    if ($isNowGraduated && !$m->saver->trashed()) {
+                        $m->saver->delete();
+                    }
+                }
+
+                if ($isNowGraduated) {
+                    $m->delete();
                 }
 
                 $promotedCount++;
             }
-            $this->info("{$promotedCount} data siswa berhasil diproses pada siklus bulan Juli (naik kelas / lulus).");
+            $this->info("{$promotedCount} data siswa berhasil diproses pada siklus tahun ajaran {$currentAcademicYear} (naik kelas / lulus).");
         } else {
-            $this->comment("Bukan bulan Juli (bulan sekarang: {$currentMonth}). Kenaikan kelas otomatis dijadwalkan pada bulan Juli.");
+            $this->comment("Bukan bulan Juni (bulan sekarang: {$currentMonth}). Kenaikan kelas tahunan otomatis dijadwalkan pada bulan Juni.");
         }
 
         // 2. Pindahkan siswa >= 3 tahun ke sampah

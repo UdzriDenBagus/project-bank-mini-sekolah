@@ -897,17 +897,19 @@ class AdminController extends Controller
      * - KUNCI: Riwayat transaksi bank mini tidak pernah dihapus!
      */
     /**
-     * Kenaikan Kelas Tahunan & Kelulusan Setiap Bulan Juli:
-     * - Setiap bulan Juli (1 tahun sekali), semua siswa aktif akan naik kelas 1 tingkat.
-     * - Siswa kelas 12 / XII akan dinyatakan LULUS pada bulan Juli.
+     * Kenaikan Kelas Tahunan & Kelulusan Akhir Tahun Ajaran (Siklus Juni - Juni):
+     * - Tahun Ajaran sekolah berjalan dari bulan Juni s.d. Juni berikutnya (Contoh: Juni 2025 s.d. Juni 2026).
+     * - Pada akhir tahun ajaran (bulan Juni), terjadi kenaikan kelas (X -> XI, XI -> XII).
+     * - Siswa kelas 12 / XII yang telah menyelesaikan 3 tahun masa studi dinyatakan LULUS (Alumni) dan diarsipkan ke Data Terhapus.
      */
-    public function processJulyClassPromotion($force = false)
+    public function processClassPromotion($force = false)
     {
         $currentMonth = (int) now()->month;
         $currentYear = (int) now()->year;
+        $currentAcademicYear = Member::getAcademicYear(now());
 
-        // Hanya dieksekusi di bulan Juli (month >= 7) atau jika force == true
-        if (!$force && $currentMonth < 7) {
+        // Kenaikan kelas tahunan otomatis dieksekusi di bulan Juni (month >= 6) atau jika dipaksa/simulasi (force == true)
+        if (!$force && $currentMonth < 6) {
             return 0;
         }
 
@@ -927,13 +929,14 @@ class AdminController extends Controller
                 continue;
             }
 
-            // Siswa yang baru didaftarkan di bulan Juli tahun berjalan tidak langsung naik kelas di bulan yang sama
-            if (!$force && $m->created_at && $m->created_at->format('Y-m') >= now()->format('Y-07')) {
+            // Siswa yang baru didaftarkan di bulan yang sama tidak langsung dinaikkan kelasnya
+            if (!$force && $m->created_at && $m->created_at->format('Y-m') >= now()->format('Y-m')) {
                 continue;
             }
 
-            // Cek apakah sudah pernah dinaikkan kelas pada tahun ini
-            if (!$force && $m->last_promoted_at && $m->last_promoted_at->year >= $currentYear) {
+            // Proteksi Siklus Tahun Ajaran (Juni - Juni):
+            // Siswa hanya boleh naik kelas 1 kali dalam 1 periode Tahun Ajaran (misal 2025/2026)
+            if (!$force && $m->last_promoted_at && Member::getAcademicYear($m->last_promoted_at) === $currentAcademicYear) {
                 continue;
             }
 
@@ -961,9 +964,9 @@ class AdminController extends Controller
                 ]);
             }
 
-            // REVISI 4: Jika siswa dinyatakan LULUS (misal dari kelas 12 / XII),
+            // Jika siswa dinyatakan LULUS (misal dari kelas 12 / XII),
             // data anggota dan rekening penabung otomatis dipindahkan ke "Data Siswa Terhapus" (Soft Delete)
-            // agar tidak lagi muncul di Data Anggota maupun Rekening Penabung!
+            // agar tidak lagi muncul di Data Anggota aktif loket teller, namun mutasi transaksi tetap abadi
             if ($isNowGraduated) {
                 if ($m->saver && !$m->saver->trashed()) {
                     $m->saver->delete();
@@ -977,25 +980,32 @@ class AdminController extends Controller
         return $promotedCount;
     }
 
+    public function processJulyClassPromotion($force = false)
+    {
+        return $this->processClassPromotion($force);
+    }
+
     /**
-     * Endpoint API Admin untuk menjalankan / simulasi Kenaikan Kelas Juli secara manual
+     * Endpoint API Admin untuk menjalankan / simulasi Kenaikan Kelas & Kelulusan (Siklus Juni)
      */
     public function triggerJulyPromotion(Request $request)
     {
         $force = $request->boolean('force', true);
-        $count = $this->processJulyClassPromotion($force);
+        $count = $this->processClassPromotion($force);
+        $academicYear = Member::getAcademicYear(now());
 
         return response()->json([
             'success' => true,
-            'message' => "Proses Kenaikan Kelas & Kelulusan Bulan Juli selesai. {$count} data siswa berhasil diproses (naik kelas / lulus ke data terhapus).",
+            'message' => "Proses Kenaikan Kelas & Kelulusan (Tahun Ajaran {$academicYear}) selesai. Sebanyak {$count} siswa berhasil diproses (naik kelas / lulus ke data terhapus).",
             'promoted_count' => $count,
+            'academic_year' => $academicYear,
         ]);
     }
 
     public function processStudentLifecycle()
     {
-        // 1. Kenaikan Kelas Tahunan & Kelulusan Bulan Juli
-        $this->processJulyClassPromotion();
+        // 1. Kenaikan Kelas Tahunan & Kelulusan Siklus Juni
+        $this->processClassPromotion();
 
         // 2. Siswa lulus yang masih berstatus aktif dipindahkan ke Sampah (Data Terhapus)
         $graduatedActive = Member::whereNull('deleted_at')
@@ -1010,13 +1020,27 @@ class AdminController extends Controller
             $gm->delete();
         }
 
-        // 3. Siswa terdaftar lebih dari 3 tahun -> Masuk ke Sampah
-        $expiredMembers = Member::where('created_at', '<=', now()->subYears(3))
-                                ->whereNull('deleted_at')
-                                ->get();
+        // 3. Siswa tingkat akhir yang telah mencapai tahun kelulusan dan berstatus lulus
+        $currentYear = (int) now()->year;
+        $overdueGraduates = Member::whereNull('deleted_at')
+                                  ->where('graduation_year', '<=', $currentYear)
+                                  ->where(function ($q) {
+                                      $q->where('class_name', 'like', '%12%')
+                                        ->orWhere('class_name', 'like', '%XII%')
+                                        ->orWhere('class_name', 'like', '%Lulus%')
+                                        ->orWhere('class_name', 'like', '%Alumni%');
+                                  })
+                                  ->get();
 
-        foreach ($expiredMembers as $m) {
+        foreach ($overdueGraduates as $m) {
+            $newClass = Member::isGraduated($m->class_name) ? $m->class_name : Member::promoteClassName($m->class_name);
+            $m->update([
+                'class_name' => $newClass,
+                'status'     => 'graduated',
+                'graduation_year' => min((int)$m->graduation_year, $currentYear),
+            ]);
             if ($m->saver && !$m->saver->trashed()) {
+                $m->saver->update(['class_name' => $newClass, 'status' => 'inactive']);
                 $m->saver->delete();
             }
             $m->delete();

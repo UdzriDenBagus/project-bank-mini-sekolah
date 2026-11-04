@@ -108,8 +108,8 @@
                         <img src="{{ asset('images/excel.png') }}" alt="Excel" class="w-4 h-4 object-contain">
                         <span>Tambah Lewat Excel</span>
                     </button>
-                    <!-- Kenaikan Kelas Tahunan Bulan Juli -->
-                    <button onclick="triggerJulyPromotionAdmin()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition shadow flex items-center" title="Kenaikan Kelas & Kelulusan Bulan Juli"> Kenaikan Kelas Juli
+                    <!-- Kenaikan Kelas Tahunan Akhir Tahun Ajaran (Juni) -->
+                    <button onclick="triggerJulyPromotionAdmin()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition shadow flex items-center" title="Kenaikan Kelas & Kelulusan Akhir Tahun Ajaran (Juni)"> Kenaikan Kelas & Kelulusan (Juni)
                     </button>
                 </div>
             </div>
@@ -1619,8 +1619,20 @@
 
     async function triggerJulyPromotionAdmin() {
         Swal.fire({
-            title: 'Jalankan Kenaikan Kelas Juli?',
-            text: 'Semua siswa aktif akan dinaikkan kelasnya (misal X -> XI, XI -> XII, dan kelas 12/XII akan dinyatakan Lulus). Proses ini normalnya berjalan otomatis 1 tahun sekali pada bulan Juli.',
+            title: 'Kenaikan Kelas & Kelulusan (Siklus Juni)?',
+            html: `
+                <div class="text-left text-xs text-slate-600 space-y-2">
+                    <p class="font-bold text-slate-800">Sesuai Siklus Kalender Tahun Ajaran Sekolah (Juni s.d. Juni):</p>
+                    <ul class="list-disc pl-5 space-y-1 text-slate-600">
+                        <li><b>Kelas X (10)</b> &#8594; Naik ke <b>Kelas XI (11)</b></li>
+                        <li><b>Kelas XI (11)</b> &#8594; Naik ke <b>Kelas XII (12)</b></li>
+                        <li><b>Kelas XII (12)</b> &#8594; Dinyatakan <b>LULUS (Alumni)</b> & dipindahkan ke Data Terhapus</li>
+                    </ul>
+                    <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-[11px] mt-2">
+                        <b>Periode Tahun Ajaran:</b> Berjalan dari Juni s.d. Juni berikutnya (bukan 1 tahun kalender Jan - Des). Siswa hanya dinaikkan 1 kali per siklus tahun ajaran.
+                    </div>
+                </div>
+            `,
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#f59e0b',
@@ -1630,7 +1642,8 @@
         }).then(async (result) => {
             if (result.isConfirmed) {
                 Swal.fire({
-                    title: 'Memproses Kenaikan Kelas...',
+                    title: 'Memproses Kenaikan Kelas & Kelulusan...',
+                    text: 'Mengevaluasi kenaikan tingkat kelas X -> XI -> XII dan kelulusan siswa...',
                     allowOutsideClick: false,
                     didOpen: () => { Swal.showLoading(); }
                 });
@@ -1643,7 +1656,7 @@
                 if (res && res.data && res.data.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Kenaikan Kelas Selesai!',
+                        title: 'Kenaikan Kelas & Kelulusan Selesai!',
                         text: res.data.message,
                         confirmButtonColor: '#10b981'
                     });
