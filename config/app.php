@@ -15,6 +15,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'deploy_secret' => env('DEPLOY_SECRET', 'skansaba_super_secret_token_12345'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

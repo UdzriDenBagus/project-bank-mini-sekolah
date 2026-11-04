@@ -19,6 +19,7 @@ class CashClosing extends Model
         'supervisor_id',
         'approved_at',
         'notes',
+        'rejection_reason',
     ];
 
     protected $casts = [

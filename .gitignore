@@ -11,3 +11,6 @@ Soal UKK_Bank Mini.docx.pdf
 .env.production
 
 /vendor/
+/node_modules/
+.phpunit.result.cache
+panduan_extracted.txt

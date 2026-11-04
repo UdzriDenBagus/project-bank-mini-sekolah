@@ -6,6 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\Customer;
+use App\Models\Saver;
+use App\Models\Member;
 
 class CheckRole
 {
@@ -25,10 +27,12 @@ class CheckRole
         }
 
         // 2. Deteksi role user (Petugas vs Nasabah)
-        $userRole = ($user instanceof Customer) ? 'customer' : $user->role;
+        $userRole = ($user instanceof Saver || $user instanceof Customer || $user instanceof Member) ? 'customer' : $user->role;
 
         // 3. Cek apakah akun aktif atau diblokir
-        if ($user->status !== 'active') {
+        if ($user instanceof Member) {
+            // Siswa terdaftar tetap diizinkan login & melihat profil terbatasnya meskipun belum aktivasi rekening tabungan
+        } elseif ($user->status !== 'active') {
             return response()->json([
                 'success' => false,
                 'message' => 'Akun Anda sedang dinonaktifkan atau diblokir. Silakan hubungi Administrator.'

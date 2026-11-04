@@ -2,29 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Laravel\Sanctum\HasApiTokens;
-
-class Customer extends Authenticatable
+/**
+ * Kompatibilitas Kode Lama:
+ * Customer menjadi alias turunan dari Saver agar fitur/panggilan lama tetap berjalan lancar.
+ */
+class Customer extends Saver
 {
-    use HasApiTokens;
-
-    protected $fillable = [
-        'account_number',
-        'nis',
-        'name',
-        'class_name',
-        'security_pin',
-        'balance',
-        'status',
-    ];
-
-    protected $hidden = [
-        'security_pin',
-    ];
-
-    public function transactions()
-    {
-        return $this->hasMany(Transaction::class, 'customer_id');
-    }
 }
