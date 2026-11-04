@@ -49,22 +49,13 @@
                 </button>
             </form>
 
-            <div class="pt-3 border-t border-slate-100 text-center space-y-1">
-                <p class="text-[11px] text-slate-400">
-                    Akun Petugas: <span class="font-mono text-slate-600 font-bold">admin / teller1</span>
-                </p>
-                <p class="text-[10px] text-slate-400 italic">
-                    Password default: <span class="font-mono text-slate-600">password123</span>
-                </p>
-                <div class="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 text-center font-medium">
+            <div class="pt-3 border-t border-slate-100 text-center space-y-2">
+                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 text-center font-medium">
                     Nasabah Siswa dapat mengakses layanan tabungan secara mandiri melalui <b>Aplikasi Mobile (Flutter)</b>.
                 </div>
-                <div class="mt-3">
-                    <a href="/downloads/bank_mini.apk" download class="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-2 transition shadow">
-                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                        </svg>
-                        <span>📱 Unduh Aplikasi Nasabah Siswa (.APK Android)</span>
+                <div>
+                    <a href="/downloads/bank_mini.apk" download class="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center transition shadow">
+                        <span>Unduh Aplikasi Nasabah Siswa (.APK Android)</span>
                     </a>
                 </div>
             </div>
