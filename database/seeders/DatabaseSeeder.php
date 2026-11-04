@@ -33,18 +33,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 3. Akun Supervisor (Kepala Bank Mini)
-        User::updateOrCreate(
-            ['username' => 'supervisor'],
-            [
-                'name'     => 'Supervisor (Budi Santoso, S.E.)',
-                'password' => Hash::make('password123'),
-                'role'     => 'supervisor',
-                'status'   => 'active',
-            ]
-        );
-
-        // 4. Akun Nasabah Siswa Demo
+        // 3. Akun Nasabah Siswa Demo
         Customer::updateOrCreate(
             ['account_number' => '260100001'],
             [

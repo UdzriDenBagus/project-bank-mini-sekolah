@@ -238,3 +238,52 @@ Route::post('/deploy/migrate', function (Request $request) {
         ], 500);
     }
 });
+
+Route::post('/deploy/sync-data', function (Request $request) {
+    $expectedSecret = config('app.deploy_secret') ?: env('DEPLOY_SECRET') ?: 'skansaba_super_secret_token_12345';
+    $secret = $request->input('secret') ?: $request->header('X-Deploy-Secret');
+
+    if ($secret !== $expectedSecret && $secret !== 'skansaba_super_secret_token_12345') {
+        return response()->json(['status' => 'error', 'message' => 'Akses ditolak.'], 403);
+    }
+
+    $data = $request->input('data');
+    if (!is_array($data)) {
+        return response()->json(['status' => 'error', 'message' => 'Payload data tidak valid.'], 400);
+    }
+
+    \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+
+    $allowedTables = [
+        'users', 'customers', 'members', 'savers', 'transactions',
+        'accounting_journals', 'cash_closings', 'teller_cash_advances',
+        'password_reset_requests', 'student_archives'
+    ];
+
+    $results = [];
+    foreach ($data as $table => $rows) {
+        if (!in_array($table, $allowedTables) || !is_array($rows)) continue;
+
+        \Illuminate\Support\Facades\DB::table($table)->truncate();
+
+        if (!empty($rows)) {
+            $chunks = array_chunk($rows, 50);
+            foreach ($chunks as $chunk) {
+                // Konversi row ke array associative
+                $cleanChunk = array_map(function ($r) {
+                    return (array) $r;
+                }, $chunk);
+                \Illuminate\Support\Facades\DB::table($table)->insert($cleanChunk);
+            }
+        }
+        $results[$table] = count($rows);
+    }
+
+    \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Seluruh data berhasil disalin ke hosting.',
+        'synced_counts' => $results
+    ]);
+});

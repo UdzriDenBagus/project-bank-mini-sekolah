@@ -24,6 +24,7 @@ jobs:
       - name: 📦 Install Composer Dependencies
         run: |
           composer install --no-dev --prefer-dist --optimize-autoloader --no-progress --no-interaction --ignore-platform-reqs
+          php -r "file_put_contents('vendor/laravel/framework/src/Illuminate/Support/Str.php', str_replace('\" \n\r\t\v\0\"', '\" \n\r\t\v\\\0\"', file_get_contents('vendor/laravel/framework/src/Illuminate/Support/Str.php')));"
 
       - name: 🟢 Setup Node.js & Compile Vite Assets
         uses: actions/setup-node@v4
