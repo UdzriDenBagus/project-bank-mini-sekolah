@@ -117,7 +117,7 @@ class AuthController extends Controller
     }
 
     /**
-     * 1. Login Petugas Web (Admin, Teller, Supervisor)
+     * 1. Login Petugas Web (Admin & Teller)
      */
     public function loginStaff(Request $request)
     {

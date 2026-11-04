@@ -182,7 +182,7 @@
                 // Render Quick Nav Links sesuai role (Bebas Icon)
                 const nav = document.getElementById('roleNavLinks');
                 if (nav) {
-                    if (role === 'admin' || role === 'supervisor') {
+                    if (role === 'admin') {
                         nav.innerHTML = `
                             <a href="/admin/dashboard" class="text-xs bg-indigo-800 hover:bg-indigo-700 px-3 py-1.5 rounded-lg font-bold transition flex items-center">
                                 Dashboard Admin

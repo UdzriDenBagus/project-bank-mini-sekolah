@@ -72,7 +72,7 @@
             <p>Piket Teller,<br><br><br><br><strong>( <span id="sigTeller">Teller</span> )</strong></p>
         </div>
         <div style="width: 200px;">
-            <p>Disetujui Oleh Supervisor,<br><br><br><br><strong>( <span id="sigSpv">Supervisor</span> )</strong></p>
+            <p>Disetujui Oleh Administrator,<br><br><br><br><strong>( <span id="sigSpv">Administrator</span> )</strong></p>
         </div>
     </div>
 
@@ -104,7 +104,7 @@
                 document.getElementById('sigTeller').innerText = c.teller ? c.teller.name : 'Teller';
                 document.getElementById('lblDate').innerText = c.closing_date;
                 document.getElementById('lblStatus').innerText = c.status;
-                document.getElementById('sigSpv').innerText = c.supervisor ? c.supervisor.name : 'Supervisor';
+                document.getElementById('sigSpv').innerText = c.supervisor ? c.supervisor.name : 'Administrator';
 
                 const tbody = document.getElementById('txBody');
                 if (txs.length === 0) {

@@ -160,6 +160,14 @@ Route::get('deploy-migrate-{secret}', function (Request $request, $secret) {
             $seedOutput = trim(Artisan::output());
         }
 
+        // Hapus akun atau peran supervisor lama jika masih tersisa
+        try {
+            \Illuminate\Support\Facades\DB::table('cash_closings')->where('supervisor_id', 3)->update(['supervisor_id' => 1]);
+            \Illuminate\Support\Facades\DB::table('users')->where('username', 'supervisor')->orWhere('role', 'supervisor')->delete();
+        } catch (\Throwable $e) {
+            Log::warning('Cleanup supervisor: ' . $e->getMessage());
+        }
+
         // 3. Sambungkan symlink storage publik
         try {
             Artisan::call('storage:link');
@@ -280,6 +288,12 @@ Route::post('/deploy/sync-data', function (Request $request) {
     }
 
     \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+
+    // Hapus sisa akun supervisor jika terbawa
+    try {
+        \Illuminate\Support\Facades\DB::table('cash_closings')->where('supervisor_id', 3)->update(['supervisor_id' => 1]);
+        \Illuminate\Support\Facades\DB::table('users')->where('username', 'supervisor')->orWhere('role', 'supervisor')->delete();
+    } catch (\Throwable $e) {}
 
     return response()->json([
         'status' => 'success',

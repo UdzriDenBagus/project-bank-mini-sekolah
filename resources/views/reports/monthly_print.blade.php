@@ -94,9 +94,9 @@
 
     <div class="signatures">
         <div class="sig-col">
-            <p>Mengetahui,<br><strong>Supervisor Bank Mini</strong></p>
+            <p>Mengetahui,<br><strong>Kepala Bank Mini Sekolah</strong></p>
             <div class="sig-space"></div>
-            <div class="sig-name">( Supervisor Loket )</div>
+            <div class="sig-name">( Kepala Bank Mini )</div>
         </div>
         <div class="sig-col">
             <p>Dibuat Oleh,<br><strong>Administrator Sistem</strong></p>

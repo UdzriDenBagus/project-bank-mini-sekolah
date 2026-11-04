@@ -374,7 +374,7 @@
     </div>
 
     <!-- ======================================================== -->
-    <!-- TAB 4: OTORISASI CLOSING KAS TELLER (FITUR SUPERVISOR PINDAH KE ADMIN) -->
+    <!-- TAB 4: OTORISASI CLOSING KAS TELLER (OTORISASI ADMIN) -->
     <!-- ======================================================== -->
     <div id="sectionClosings" class="space-y-6 hidden">
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">

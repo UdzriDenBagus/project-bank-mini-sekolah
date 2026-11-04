@@ -340,7 +340,7 @@
         <div id="clRejectionBox" class="hidden p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-900 space-y-1">
             <div class="flex items-center font-bold text-rose-700 space-x-1.5">
                 
-                <span>Closing Terakhir DITOLAK oleh Admin/Supervisor!</span>
+                <span>Closing Terakhir DITOLAK oleh Administrator!</span>
             </div>
             <p class="text-[11px] text-rose-800">
                 <b>Alasan Penolakan:</b> <span id="clRejectionText" class="font-medium">-</span>
@@ -355,7 +355,7 @@
                 </span>
                 <span id="clStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] uppercase font-black bg-indigo-600 text-white">SUBMITTED</span>
             </div>
-            <p id="clStatusNote" class="text-[11px] text-indigo-800 leading-relaxed"> Laporan rekonsiliasi kas telah dikirim ke Supervisor. Seluruh transaksi dinonaktifkan hingga hari berikutnya.
+            <p id="clStatusNote" class="text-[11px] text-indigo-800 leading-relaxed"> Laporan rekonsiliasi kas telah dikirim ke Administrator. Seluruh transaksi dinonaktifkan hingga hari berikutnya.
             </p>
         </div>
 
@@ -1024,13 +1024,13 @@
                 const st = (d.existing_closing.status === 'approved') ? 'DISETUJUI' : (d.existing_closing.status === 'dispute' ? 'DISPUTE' : 'SUBMITTED');
                 document.getElementById('clStatusBadge').innerText = st;
                 if (d.existing_closing.status === 'approved') {
-                    document.getElementById('clStatusNote').innerText = 'Rekonsiliasi kas hari ini telah disetujui oleh Supervisor/Admin. Data kas telah dikunci.';
+                    document.getElementById('clStatusNote').innerText = 'Rekonsiliasi kas hari ini telah disetujui oleh Administrator. Data kas telah dikunci.';
                     if (submitBtn) {
                         submitBtn.disabled = true;
                         submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
                     }
                 } else {
-                    document.getElementById('clStatusNote').innerText = 'Laporan rekonsiliasi kas telah dikirim ke Supervisor. Anda tetap dapat memperbarui jika ada perbaikan fisik.';
+                    document.getElementById('clStatusNote').innerText = 'Laporan rekonsiliasi kas telah dikirim ke Administrator. Anda tetap dapat memperbarui jika ada perbaikan fisik.';
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');

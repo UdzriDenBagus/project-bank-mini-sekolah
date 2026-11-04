@@ -675,7 +675,7 @@ class TellerController extends Controller
     }
 
     /**
-     * 10. Submit Rekonsiliasi Kas Teller ke Supervisor
+     * 10. Submit Rekonsiliasi Kas Teller ke Administrator
      */
     public function submitClosing(Request $request)
     {
@@ -698,7 +698,7 @@ class TellerController extends Controller
         if ($existing && $existing->status === 'approved') {
             return response()->json([
                 'success' => false,
-                'message' => 'Rekonsiliasi kas hari ini telah disetujui (Approved) oleh Supervisor/Admin dan tidak dapat diubah lagi.'
+                'message' => 'Rekonsiliasi kas hari ini telah disetujui (Approved) oleh Administrator dan tidak dapat diubah lagi.'
             ], 422);
         }
 
@@ -736,7 +736,7 @@ class TellerController extends Controller
         );
 
         $message = ($difference === 0) 
-            ? 'Rekonsiliasi Kas Berhasil (KLOP Rp 0)! Laporan harian siap diverifikasi Supervisor.'
+            ? 'Rekonsiliasi Kas Berhasil (KLOP Rp 0)! Laporan harian siap diverifikasi Administrator.'
             : 'PERINGATAN: Terdeteksi Selisih Kas sebesar Rp ' . number_format($difference, 0, ',', '.') . ' (Status: DISPUTE). Harap periksa bundel slip transaksi fisik Anda.';
 
         return response()->json([

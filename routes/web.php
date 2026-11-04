@@ -15,7 +15,7 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
-// 1. Halaman Login Petugas (Multi-Role: Admin, Teller, Supervisor)
+// 1. Halaman Login Petugas (Multi-Role: Admin & Teller)
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
