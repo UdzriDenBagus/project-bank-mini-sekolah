@@ -1086,8 +1086,14 @@
         if (tab === 'journals') loadJournals();
     }
 
+    function openModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('hidden');
+    }
+
     function closeModal(id) {
-        document.getElementById(id).classList.add('hidden');
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
     }
 
     // =========================================================
@@ -1498,7 +1504,7 @@
                         </span>
                     </td>
                     <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
-                        <button onclick='openEditMemberModal(${JSON.stringify(m)})' class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition" title="Ubah Data Siswa (Nama, Kelas, Tahun Lulus)"> Edit
+                        <button onclick="openEditMemberModal(${m.id})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition" title="Ubah Data Siswa (Nama, Kelas, Tahun Lulus)"> Edit
                         </button>
                         <button onclick="editMemberEmail(${m.id}, '${safeName}', '${(m.email || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition" title="Ubah atau Daftarkan Gmail Siswa"> Email
                         </button>
@@ -1720,11 +1726,21 @@
         document.getElementById('addMemberGradYear').value = gradYear;
     }
 
-    function openEditMemberModal(m) {
+    function openEditMemberModal(idOrObj) {
+        let m = null;
+        if (typeof idOrObj === 'object' && idOrObj !== null) {
+            m = idOrObj;
+        } else {
+            m = (adminData.members || []).find(x => String(x.id) === String(idOrObj));
+        }
+        if (!m) {
+            console.error('Data siswa tidak ditemukan:', idOrObj);
+            return;
+        }
         document.getElementById('editMemberId').value = m.id;
-        document.getElementById('editMemberNis').value = m.nis;
-        document.getElementById('editMemberName').value = m.name;
-        document.getElementById('editMemberClass').value = m.class_name;
+        document.getElementById('editMemberNis').value = m.nis || '';
+        document.getElementById('editMemberName').value = m.name || '';
+        document.getElementById('editMemberClass').value = m.class_name || '';
         document.getElementById('editMemberEmail').value = m.email || '';
         document.getElementById('editMemberGradYear').value = m.graduation_year || 2028;
         openModal('modalEditMember');
