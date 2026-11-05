@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Saver;
 use App\Models\Customer;
@@ -47,6 +49,20 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Keamanan Rate Limiting: Lockout 30 menit jika salah login maksimal 10 kali
+        $throttleKey = 'login_lockout:' . Str::lower($input) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = (int) ceil($seconds / 60);
+            return response()->json([
+                'success' => false,
+                'message' => "Terlalu banyak percobaan login yang salah (maksimal 10 kali). Akun Anda dikunci sementara selama 30 menit demi keamanan sistem. Silakan coba lagi dalam {$minutes} menit.",
+                'locked' => true,
+                'retry_after_minutes' => $minutes,
+            ], 429);
+        }
+
         // 1. Cek Apakah Pengguna Adalah Petugas Sistem (Admin / Teller)
         $user = User::where('username', $input)
                     ->orWhere('email', $input)
@@ -59,6 +75,9 @@ class AuthController extends Controller
                     'message' => 'Akun Petugas Anda dinonaktifkan. Silakan hubungi Administrator.'
                 ], 403);
             }
+
+            // Bersihkan batasan login saat berhasil
+            RateLimiter::clear($throttleKey);
 
             $token = $user->createToken('auth_token_staff', [$user->role])->plainTextToken;
 
@@ -102,6 +121,9 @@ class AuthController extends Controller
             }
 
             if ($passwordMatched) {
+                // Kredensial benar, bersihkan percobaan
+                RateLimiter::clear($throttleKey);
+
                 // Akses Web Desktop khusus Petugas Bank. Nasabah hanya boleh via Mobile App (Flutter).
                 return response()->json([
                     'success' => false,
@@ -110,9 +132,24 @@ class AuthController extends Controller
             }
         }
 
+        // Catat kegagalan autentikasi (maksimal 10 kali, masa jeda/decay 1800 detik = 30 menit)
+        RateLimiter::hit($throttleKey, 1800);
+        $attempts = RateLimiter::attempts($throttleKey);
+        $remaining = max(0, 10 - $attempts);
+
+        if ($remaining === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Percobaan login salah telah mencapai batas maksimal 10 kali! Akun Anda dikunci sementara selama 30 menit demi keamanan sistem.",
+                'locked' => true,
+                'retry_after_minutes' => 30,
+            ], 429);
+        }
+
         return response()->json([
             'success' => false,
-            'message' => 'Identitas akun (Username / NIS / No. Rekening) atau Kata Sandi salah!'
+            'message' => "Identitas akun (Username / NIS / No. Rekening) atau Kata Sandi salah! Sisa percobaan: {$remaining} kali sebelum akun dikunci 30 menit.",
+            'remaining_attempts' => $remaining,
         ], 401);
     }
 
@@ -134,12 +171,39 @@ class AuthController extends Controller
             ], 422);
         }
 
+        $throttleKey = 'login_lockout:' . Str::lower($request->username) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = (int) ceil($seconds / 60);
+            return response()->json([
+                'success' => false,
+                'message' => "Terlalu banyak percobaan login yang salah (maksimal 10 kali). Akun Anda dikunci sementara selama 30 menit demi keamanan sistem. Silakan coba lagi dalam {$minutes} menit.",
+                'locked' => true,
+                'retry_after_minutes' => $minutes,
+            ], 429);
+        }
+
         $user = User::where('username', $request->username)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            RateLimiter::hit($throttleKey, 1800);
+            $attempts = RateLimiter::attempts($throttleKey);
+            $remaining = max(0, 10 - $attempts);
+
+            if ($remaining === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Percobaan login salah telah mencapai batas maksimal 10 kali! Akun Anda dikunci sementara selama 30 menit demi keamanan sistem.",
+                    'locked' => true,
+                    'retry_after_minutes' => 30,
+                ], 429);
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Username atau Password salah!'
+                'message' => "Username atau Password salah! Sisa percobaan: {$remaining} kali sebelum akun dikunci 30 menit.",
+                'remaining_attempts' => $remaining,
             ], 401);
         }
 
@@ -149,6 +213,8 @@ class AuthController extends Controller
                 'message' => 'Akun dinonaktifkan. Hubungi Administrator.'
             ], 403);
         }
+
+        RateLimiter::clear($throttleKey);
 
         $token = $user->createToken('auth_token_staff', [$user->role])->plainTextToken;
 
@@ -191,6 +257,19 @@ class AuthController extends Controller
             ], 422);
         }
 
+        $throttleKey = 'login_lockout:' . Str::lower($request->identifier) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = (int) ceil($seconds / 60);
+            return response()->json([
+                'success' => false,
+                'message' => "Terlalu banyak percobaan login yang salah (maksimal 10 kali). Akun Anda dikunci sementara selama 30 menit demi keamanan sistem. Silakan coba lagi dalam {$minutes} menit.",
+                'locked' => true,
+                'retry_after_minutes' => $minutes,
+            ], 429);
+        }
+
         // 1. Cek apakah ada di tabel Savers (Nasabah Rekening Aktif)
         $customer = Saver::where('account_number', $request->identifier)
                          ->orWhere('nis', $request->identifier)
@@ -220,6 +299,9 @@ class AuthController extends Controller
                         'message' => 'Rekening sedang diblokir. Silakan hubungi Administrator.'
                     ], 403);
                 }
+
+                // Bersihkan batasan percobaan login nasabah
+                RateLimiter::clear($throttleKey);
 
                 $token = $customer->createToken('auth_token_customer', ['customer'])->plainTextToken;
 
@@ -251,6 +333,9 @@ class AuthController extends Controller
             // Jika member ternyata memiliki saver aktif
             if ($member->saver && $member->status === 'active_account') {
                 $saver = $member->saver;
+
+                RateLimiter::clear($throttleKey);
+
                 $token = $saver->createToken('auth_token_customer', ['customer'])->plainTextToken;
                 return response()->json([
                     'success' => true,
@@ -279,9 +364,24 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Catat kegagalan login nasabah (maksimal 10 kali salah, jeda lockout 1800 detik = 30 menit)
+        RateLimiter::hit($throttleKey, 1800);
+        $attempts = RateLimiter::attempts($throttleKey);
+        $remaining = max(0, 10 - $attempts);
+
+        if ($remaining === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Percobaan login salah telah mencapai batas maksimal 10 kali! Akun Anda dikunci sementara selama 30 menit demi keamanan sistem.",
+                'locked' => true,
+                'retry_after_minutes' => 30,
+            ], 429);
+        }
+
         return response()->json([
             'success' => false,
-            'message' => 'Nomor Rekening/NIS atau Kata Sandi / PIN salah!'
+            'message' => "Nomor Rekening/NIS atau Kata Sandi / PIN salah! Sisa percobaan: {$remaining} kali sebelum akun dikunci 30 menit.",
+            'remaining_attempts' => $remaining,
         ], 401);
     }
 

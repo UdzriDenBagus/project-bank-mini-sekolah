@@ -26,6 +26,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/password/submit-other', [AuthController::class, 'submitResetOtherRole']);
 });
 
+// Status Pelayanan Loket Teller (Publik - Dapat diakses oleh Mobile Nasabah sebelum login)
+Route::get('/public/teller-status', [TellerController::class, 'getServiceStatus']);
+
 // Area Terproteksi Sanctum
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/profile', [AuthController::class, 'profile']);
@@ -130,6 +133,9 @@ Route::middleware(['auth:sanctum', 'role:teller'])->prefix('teller')->group(func
     // Modal Awal & Saldo Kas Laci Loket Teller
     Route::get('/cash-advances/today', [TellerController::class, 'getCashAdvanceSummary']);
     Route::post('/cash-advances', [TellerController::class, 'requestCashAdvance']);
+
+    // Status Operasional Pelayanan Loket Teller (Buka, Istirahat, Tutup)
+    Route::post('/service-status', [TellerController::class, 'updateServiceStatus']);
 });
 
 // Area Khusus Nasabah Siswa

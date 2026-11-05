@@ -2,6 +2,40 @@
 @section('title', 'Loket Piket Teller - Bank Mini Sekolah')
 
 @section('content')
+<!-- ======================================================== -->
+<!-- BAR STATUS OPERASIONAL PELAYANAN LOKET TELLER (BUKA / ISTIRAHAT / TUTUP) -->
+<!-- ======================================================== -->
+<div class="mb-6 bg-white rounded-3xl p-5 shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex items-center space-x-3.5">
+        <div id="tellerStatusDot" class="w-4 h-4 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-100 flex-shrink-0"></div>
+        <div>
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-black uppercase tracking-wider text-slate-500">Status Layanan Loket:</span>
+                <span id="tellerCurrentStatusBadge" class="text-xs font-black px-3 py-1 rounded-full uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    BUKA
+                </span>
+                <span id="tellerStatusUpdatedText" class="text-[11px] text-slate-400 font-mono hidden sm:inline"></span>
+            </div>
+            <p id="tellerStatusDescText" class="text-xs text-slate-500 mt-0.5">
+                Loket Buka - Siap melayani setoran & penarikan nasabah (terhubung langsung ke mobile nasabah).
+            </p>
+        </div>
+    </div>
+
+    <!-- Tombol Pilihan Status Operasional -->
+    <div class="flex items-center space-x-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 self-start md:self-auto">
+        <button onclick="setTellerServiceStatus('buka')" id="btnTellerStatusBuka" type="button" class="px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center space-x-1.5 bg-emerald-600 text-white shadow ring-2 ring-emerald-300">
+            <span>🟢 Buka</span>
+        </button>
+        <button onclick="setTellerServiceStatus('istirahat')" id="btnTellerStatusIstirahat" type="button" class="px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center space-x-1.5 text-slate-600 hover:text-amber-700 hover:bg-amber-100/60">
+            <span>🟡 Istirahat</span>
+        </button>
+        <button onclick="setTellerServiceStatus('tutup')" id="btnTellerStatusTutup" type="button" class="px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center space-x-1.5 text-slate-600 hover:text-rose-700 hover:bg-rose-100/60">
+            <span>🔴 Tutup</span>
+        </button>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
     <!-- ======================================================== -->
@@ -1421,12 +1455,101 @@
         }
     }
 
+    // =========================================================
+    // PENGATURAN STATUS OPERASIONAL PELAYANAN LOKET TELLER
+    // =========================================================
+    async function loadTellerServiceStatus() {
+        try {
+            const res = await fetch('/api/public/teller-status');
+            const data = await res.json();
+            if (data && data.success && data.data) {
+                renderTellerStatusUI(data.data);
+            }
+        } catch (e) {
+            console.error('Gagal memuat status loket:', e);
+        }
+    }
+
+    function renderTellerStatusUI(info) {
+        const status = (info.status || 'buka').toLowerCase();
+        const badge = document.getElementById('tellerCurrentStatusBadge');
+        const dot = document.getElementById('tellerStatusDot');
+        const desc = document.getElementById('tellerStatusDescText');
+        const updated = document.getElementById('tellerStatusUpdatedText');
+
+        if (updated && info.updated_at) {
+            updated.innerText = `(${info.updated_at})`;
+        }
+
+        const btnBuka = document.getElementById('btnTellerStatusBuka');
+        const btnIstirahat = document.getElementById('btnTellerStatusIstirahat');
+        const btnTutup = document.getElementById('btnTellerStatusTutup');
+
+        [btnBuka, btnIstirahat, btnTutup].forEach(b => {
+            if (!b) return;
+            b.className = 'px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center space-x-1.5 text-slate-600 hover:bg-slate-200/60';
+        });
+
+        if (status === 'buka') {
+            if (badge) {
+                badge.innerText = 'BUKA';
+                badge.className = 'text-xs font-black px-3 py-1 rounded-full uppercase bg-emerald-100 text-emerald-800 border border-emerald-300';
+            }
+            if (dot) dot.className = 'w-4 h-4 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-100 flex-shrink-0';
+            if (desc) desc.innerText = 'Loket Buka - Siap melayani setoran & penarikan nasabah (terhubung langsung ke mobile nasabah).';
+            if (btnBuka) btnBuka.className = 'px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center space-x-1.5 bg-emerald-600 text-white shadow ring-2 ring-emerald-300';
+        } else if (status === 'istirahat') {
+            if (badge) {
+                badge.innerText = 'ISTIRAHAT';
+                badge.className = 'text-xs font-black px-3 py-1 rounded-full uppercase bg-amber-100 text-amber-800 border border-amber-300';
+            }
+            if (dot) dot.className = 'w-4 h-4 rounded-full bg-amber-500 ring-4 ring-amber-100 flex-shrink-0';
+            if (desc) desc.innerText = 'Loket Sedang Istirahat - Pelayanan di loket sedang dijeda sementara.';
+            if (btnIstirahat) btnIstirahat.className = 'px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center space-x-1.5 bg-amber-500 text-slate-950 shadow ring-2 ring-amber-300';
+        } else if (status === 'tutup') {
+            if (badge) {
+                badge.innerText = 'TUTUP';
+                badge.className = 'text-xs font-black px-3 py-1 rounded-full uppercase bg-rose-100 text-rose-800 border border-rose-300';
+            }
+            if (dot) dot.className = 'w-4 h-4 rounded-full bg-rose-500 ring-4 ring-rose-100 flex-shrink-0';
+            if (desc) desc.innerText = 'Loket Tutup - Pelayanan loket teller hari ini telah ditutup.';
+            if (btnTutup) btnTutup.className = 'px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center space-x-1.5 bg-rose-600 text-white shadow ring-2 ring-rose-300';
+        }
+    }
+
+    async function setTellerServiceStatus(newStatus) {
+        Swal.fire({
+            title: 'Memperbarui Status...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const res = await fetchAPI('/teller/service-status', {
+            method: 'POST',
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (res && res.data && res.data.success) {
+            renderTellerStatusUI(res.data.data);
+            Swal.fire({
+                icon: 'success',
+                title: 'Status Berhasil Diperbarui!',
+                text: res.data.message,
+                timer: 1500,
+                showConfirmButton: false
+            });
+        } else {
+            Swal.fire('Gagal Mengubah Status', (res && res.data && res.data.message) || 'Terjadi kesalahan sistem.', 'error');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         ['activateAmountInput', 'depositAmount', 'withdrawAmount', 'clPhysicalInput', 'actTellerInitialDeposit', 'advAmount'].forEach(id => {
             attachRupiahMask(document.getElementById(id));
         });
         loadTodayTransactions();
         loadTellerCashBalance();
+        loadTellerServiceStatus();
     });
 </script>
 @endsection

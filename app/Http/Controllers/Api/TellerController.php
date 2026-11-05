@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Member;
 use App\Models\Saver;
 use App\Models\Transaction;
@@ -866,6 +867,98 @@ class TellerController extends Controller
             'success' => true,
             'message' => 'Pengajuan ' . ($type === 'initial' ? 'Modal Awal' : 'Top Up Kas') . ' sebesar Rp ' . number_format($advance->amount, 0, ',', '.') . ' berhasil dikirim ke Admin! Menunggu persetujuan.',
             'data'    => $advance
+        ]);
+    }
+
+    /**
+     * 10. Ambil Status Pelayanan Loket Teller Saat Ini (Publik - Dapat diakses Mobile App)
+     */
+    public function getServiceStatus()
+    {
+        $statusData = Cache::get('teller_service_status');
+
+        if (!$statusData) {
+            $filePath = storage_path('app/teller_status.json');
+            if (file_exists($filePath)) {
+                $statusData = json_decode(file_get_contents($filePath), true);
+            }
+        }
+
+        if (!$statusData || !is_array($statusData)) {
+            $statusData = [
+                'status'      => 'buka',
+                'label'       => 'BUKA',
+                'color'       => 'emerald',
+                'description' => 'Loket Buka - Siap melayani setoran & penarikan',
+                'updated_at'  => date('d M Y, H:i') . ' WIB',
+                'teller_name' => 'Petugas Loket',
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $statusData,
+        ]);
+    }
+
+    /**
+     * 11. Perbarui Status Pelayanan Loket Teller (Opsi: buka, istirahat, tutup)
+     */
+    public function updateServiceStatus(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:buka,istirahat,tutup',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status pelayanan loket tidak valid! Pilihan: buka, istirahat, tutup.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $status = strtolower($request->status);
+        $meta = [
+            'buka' => [
+                'label'       => 'BUKA',
+                'color'       => 'emerald',
+                'description' => 'Loket Buka - Siap melayani setoran & penarikan',
+            ],
+            'istirahat' => [
+                'label'       => 'ISTIRAHAT',
+                'color'       => 'amber',
+                'description' => 'Loket Sedang Istirahat - Pelayanan dijeda sementara',
+            ],
+            'tutup' => [
+                'label'       => 'TUTUP',
+                'color'       => 'rose',
+                'description' => 'Loket Tutup - Pelayanan loket telah berakhir',
+            ],
+        ];
+
+        $user = $request->user();
+        $payload = [
+            'status'      => $status,
+            'label'       => $meta[$status]['label'],
+            'color'       => $meta[$status]['color'],
+            'description' => $meta[$status]['description'],
+            'updated_at'  => date('d M Y, H:i') . ' WIB',
+            'teller_name' => $user ? $user->name : 'Petugas Teller',
+        ];
+
+        Cache::forever('teller_service_status', $payload);
+
+        try {
+            @file_put_contents(storage_path('app/teller_status.json'), json_encode($payload));
+        } catch (\Exception $e) {
+            // Ignore filesystem write error if permission issue
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status loket teller berhasil diperbarui menjadi: ' . $meta[$status]['label'],
+            'data'    => $payload,
         ]);
     }
 }

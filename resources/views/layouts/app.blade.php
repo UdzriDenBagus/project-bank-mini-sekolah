@@ -305,6 +305,58 @@
                 }
             });
         }
+
+        // =========================================================
+        // KEAMANAN SISTEM: OTOMATIS LOGOUT JIKA INAKTIF SELAMA 1 JAM (60 MENIT)
+        // Berlaku untuk seluruh peran yang sedang aktif di panel sistem
+        // =========================================================
+        (function initInactivityAutoLogout() {
+            const token = localStorage.getItem('bank_token') || localStorage.getItem('token');
+            const isLoginPage = window.location.pathname.includes('/login');
+
+            if (!token || isLoginPage) return;
+
+            const IDLE_LIMIT_MS = 60 * 60 * 1000; // 1 Jam = 3.600.000 ms
+            let lastActivityTime = Date.now();
+            localStorage.setItem('bank_last_active_time', lastActivityTime.toString());
+
+            function recordUserActivity() {
+                const now = Date.now();
+                if (now - lastActivityTime > 10000) {
+                    lastActivityTime = now;
+                    localStorage.setItem('bank_last_active_time', now.toString());
+                }
+            }
+
+            const events = ['mousemove', 'mousedown', 'keydown', 'keypress', 'scroll', 'touchstart', 'click'];
+            events.forEach(evt => {
+                window.addEventListener(evt, recordUserActivity, { passive: true });
+            });
+
+            setInterval(async () => {
+                const activeToken = localStorage.getItem('bank_token') || localStorage.getItem('token');
+                if (!activeToken || window.location.pathname.includes('/login')) return;
+
+                const storedLastActive = parseInt(localStorage.getItem('bank_last_active_time') || '0', 10);
+                const currentNow = Date.now();
+
+                if (storedLastActive > 0 && (currentNow - storedLastActive) >= IDLE_LIMIT_MS) {
+                    try {
+                        await fetch('/api/auth/logout', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + activeToken,
+                                'Accept': 'application/json'
+                            }
+                        });
+                    } catch (e) {}
+
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.href = '/login?reason=idle_timeout';
+                }
+            }, 20000);
+        })();
     </script>
     @yield('scripts')
 </body>

@@ -26,6 +26,16 @@
                 <span class="text-indigo-600 font-mono font-bold">ADMIN / TELLER</span>
             </div>
 
+            <!-- Banner Otomatis Logout jika Inaktif 1 Jam -->
+            <div id="idleTimeoutBanner" class="hidden p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-xs text-amber-900 space-y-1">
+                <div class="font-bold flex items-center space-x-1.5">
+                    <span>Sesi Berakhir Otomatis (1 Jam Inaktif)</span>
+                </div>
+                <p class="text-[11px] text-amber-800 leading-relaxed">
+                    Sistem secara otomatis mengakhiri sesi kerja Anda karena tidak ada aktivitas selama 1 jam demi menjaga keamanan data bank mini sekolah. Silakan masukkan kredensial akun Anda kembali.
+                </p>
+            </div>
+
             <form onsubmit="handleUnifiedLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
@@ -178,6 +188,22 @@
 
 @section('scripts')
 <script>
+    // Pengecekan Notifikasi Inaktivitas 1 Jam
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('reason') === 'idle_timeout') {
+            const banner = document.getElementById('idleTimeoutBanner');
+            if (banner) banner.classList.remove('hidden');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sesi Kerja Berakhir Otomatis',
+                text: 'Sistem secara otomatis mengakhiri sesi kerja Anda karena tidak ada aktivitas selama 1 jam demi menjaga keamanan data bank mini sekolah.',
+                confirmButtonColor: '#4f46e5'
+            });
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
+
     // ========================================================
     // HANDLER LOGIN PETUGAS (ADMIN & TELLER)
     // ========================================================
