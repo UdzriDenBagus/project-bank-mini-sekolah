@@ -132,6 +132,7 @@ Route::middleware(['auth:sanctum', 'role:teller'])->prefix('teller')->group(func
 
     // Modal Awal & Saldo Kas Laci Loket Teller
     Route::get('/cash-advances/today', [TellerController::class, 'getCashAdvanceSummary']);
+    Route::get('/cash-advances/history', [TellerController::class, 'getCashAdvanceHistory']);
     Route::post('/cash-advances', [TellerController::class, 'requestCashAdvance']);
 
     // Status Operasional Pelayanan Loket Teller (Buka, Istirahat, Tutup)

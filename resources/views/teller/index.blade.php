@@ -133,6 +133,10 @@
                     <h4 class="text-xs text-slate-400 mt-0.5">Saldo uang fisik di tangan Anda untuk melayani setoran & penarikan</h4>
                 </div>
                 <div class="flex items-center space-x-2 self-start sm:self-auto">
+                    <button onclick="openCashAdvanceHistoryModal()" id="btnAdvanceHistory" class="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5 border border-white/20" title="Lihat riwayat permohonan modal awal & top up kas Anda">
+                        <svg class="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Riwayat Modal</span>
+                    </button>
                     <button onclick="openCashAdvanceModal()" id="btnRequestAdvance" class="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs shadow-md transition flex items-center">
                         <span id="btnRequestAdvanceText">Top Up / Modal Awal</span>
                     </button>
@@ -530,6 +534,44 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Modal Riwayat Pengajuan Modal Kas Loket -->
+<div id="modalAdvanceHistory" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between border-b pb-3">
+            <div>
+                <h3 class="font-black text-slate-800 text-base flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>Riwayat Pengajuan Modal Kas Loket</span>
+                </h3>
+                <p class="text-[11px] text-slate-500">Daftar permohonan modal awal dan top up kas loket Anda beserta status persetujuan Admin</p>
+            </div>
+            <button type="button" onclick="closeModal('modalAdvanceHistory')" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <div class="overflow-y-auto flex-1 pr-1">
+            <div id="advanceHistoryLoading" class="py-12 text-center text-slate-400 text-xs">
+                <svg class="animate-spin h-6 w-6 text-amber-600 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                Memuat riwayat pengajuan modal...
+            </div>
+            <div id="advanceHistoryEmpty" class="py-12 text-center text-slate-400 text-xs hidden">
+                <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2 text-slate-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <p class="font-bold text-slate-600">Belum Ada Riwayat Pengajuan</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Semua permohonan modal awal dan top up kas Anda akan tercatat di sini.</p>
+            </div>
+            <div id="advanceHistoryList" class="space-y-3 hidden">
+                <!-- Data akan dimuat via JavaScript -->
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-3 border-t">
+            <span class="text-[11px] text-slate-400">Menampilkan 50 pengajuan terakhir Anda</span>
+            <button type="button" onclick="closeModal('modalAdvanceHistory')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Tutup</button>
+        </div>
     </div>
 </div>
 @endsection
@@ -1452,6 +1494,73 @@
             loadTellerCashBalance();
         } else {
             Swal.fire('Gagal Mengajukan Modal', (res && res.data && res.data.message) || 'Terjadi kesalahan sistem.', 'error');
+        }
+    }
+
+    async function openCashAdvanceHistoryModal() {
+        const modal = document.getElementById('modalAdvanceHistory');
+        const loading = document.getElementById('advanceHistoryLoading');
+        const empty = document.getElementById('advanceHistoryEmpty');
+        const list = document.getElementById('advanceHistoryList');
+
+        modal.classList.remove('hidden');
+        loading.classList.remove('hidden');
+        empty.classList.add('hidden');
+        list.classList.add('hidden');
+        list.innerHTML = '';
+
+        try {
+            const res = await fetchAPI('/teller/cash-advances/history');
+            loading.classList.add('hidden');
+
+            if (res && res.data && res.data.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+                list.classList.remove('hidden');
+                list.innerHTML = res.data.data.map(item => {
+                    const isInitial = (item.type === 'initial');
+                    const createdDate = item.created_at ? new Date(item.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : item.request_date;
+                    let statusBadge = '';
+                    let statusBorder = 'border-slate-200';
+
+                    if (item.status === 'pending') {
+                        statusBorder = 'border-amber-300 bg-amber-50/40';
+                        statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">Menunggu Admin</span>';
+                    } else if (item.status === 'approved') {
+                        const approver = item.approved_by ? (item.approved_by.name || 'Admin') : 'Admin';
+                        statusBorder = 'border-emerald-200 bg-emerald-50/30';
+                        statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-emerald-100 text-emerald-800">Disetujui (${approver})</span>`;
+                    } else if (item.status === 'rejected') {
+                        statusBorder = 'border-rose-200 bg-rose-50/30';
+                        statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-rose-100 text-rose-800">Ditolak</span>';
+                    }
+
+                    return `
+                        <div class="p-3.5 rounded-2xl border ${statusBorder} flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+                            <div class="space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${isInitial ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'}">
+                                        ${isInitial ? 'Modal Awal' : 'Top Up Kas'}
+                                    </span>
+                                    <span class="text-xs text-slate-500 font-mono">${createdDate}</span>
+                                </div>
+                                <div class="text-lg font-black text-slate-900 font-mono">
+                                    Rp ${Number(item.amount).toLocaleString('id-ID')}
+                                </div>
+                                ${item.notes ? `<p class="text-xs text-slate-600 italic">" ${item.notes} "</p>` : ''}
+                                ${item.status === 'rejected' && item.rejection_reason ? `<div class="p-2 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 mt-1"><b>Alasan Penolakan:</b> ${item.rejection_reason}</div>` : ''}
+                            </div>
+                            <div class="self-start sm:self-center">
+                                ${statusBadge}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                empty.classList.remove('hidden');
+            }
+        } catch (err) {
+            loading.classList.add('hidden');
+            empty.classList.remove('hidden');
+            empty.innerHTML = `<p class="text-rose-500 font-bold">Gagal memuat riwayat pengajuan.</p>`;
         }
     }
 

@@ -803,6 +803,25 @@ class TellerController extends Controller
     }
 
     /**
+     * 11b. Riwayat Seluruh Pengajuan Modal Awal & Top Up Kas Teller Ini
+     */
+    public function getCashAdvanceHistory(Request $request)
+    {
+        $tellerId = $request->user()->id;
+
+        $advances = TellerCashAdvance::with(['approvedBy'])
+            ->where('teller_id', $tellerId)
+            ->orderBy('id', 'desc')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $advances,
+        ]);
+    }
+
+    /**
      * 12. Ajukan Modal Awal / Top Up Kas Loket Teller ke Admin
      */
     public function requestCashAdvance(Request $request)
