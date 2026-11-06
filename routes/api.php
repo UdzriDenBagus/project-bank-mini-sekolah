@@ -186,6 +186,8 @@ Route::get('deploy-migrate-{secret}', function (Request $request, $secret) {
         // 4. Bersihkan dan perbarui cache optimasi
         try {
             Artisan::call('optimize:clear');
+            Cache::forget('teller_service_status');
+            @unlink(storage_path('app/teller_status.json'));
         } catch (\Throwable $e) {
             Log::warning('Optimize clear: ' . $e->getMessage());
         }

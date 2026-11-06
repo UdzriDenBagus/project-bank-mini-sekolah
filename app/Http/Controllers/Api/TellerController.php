@@ -890,8 +890,9 @@ class TellerController extends Controller
                 'label'       => 'BUKA',
                 'color'       => 'emerald',
                 'description' => 'Loket Buka - Siap melayani setoran & penarikan',
-                'updated_at'  => date('d M Y, H:i') . ' WIB',
-                'teller_name' => 'Petugas Loket',
+                'updated_at'     => now()->setTimezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') . ' WIB',
+                'updated_at_iso' => now()->setTimezone('Asia/Jakarta')->toIso8601String(),
+                'teller_name'    => 'Petugas Loket',
             ];
         }
 
@@ -943,8 +944,9 @@ class TellerController extends Controller
             'label'       => $meta[$status]['label'],
             'color'       => $meta[$status]['color'],
             'description' => $meta[$status]['description'],
-            'updated_at'  => date('d M Y, H:i') . ' WIB',
-            'teller_name' => $user ? $user->name : 'Petugas Teller',
+            'updated_at'     => now()->setTimezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') . ' WIB',
+            'updated_at_iso' => now()->setTimezone('Asia/Jakarta')->toIso8601String(),
+            'teller_name'    => $user ? $user->name : 'Petugas Teller',
         ];
 
         Cache::forever('teller_service_status', $payload);

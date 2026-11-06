@@ -57,6 +57,12 @@
                     </div>
                 </div>
 
+                <!-- Jam Digital Real-Time On-Time (WIB / Asia-Jakarta) -->
+                <div class="hidden lg:flex items-center space-x-2 bg-indigo-900/70 border border-indigo-700/60 px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold text-indigo-100 shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="navLiveDigitalClock">--:--:-- WIB</span>
+                </div>
+
                 <!-- Navigation Links & User Section -->
                 <div id="navUserSection" class="flex items-center space-x-2 sm:space-x-3">
                     <!-- Navigasi Dinamis Sesuai Role (Bebas Icon) -->
@@ -356,6 +362,25 @@
                     window.location.href = '/login?reason=idle_timeout';
                 }
             }, 20000);
+        })();
+
+        // Jam Digital Real-Time On-Time (WIB / Asia/Jakarta)
+        (function() {
+            function updateNavLiveClock() {
+                const el = document.getElementById('navLiveDigitalClock');
+                if (!el) return;
+                const now = new Date();
+                try {
+                    const dateStr = now.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+                    const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }).replace(/\./g, ':');
+                    el.innerText = `${dateStr} • ${timeStr} WIB`;
+                } catch (e) {
+                    const pad = n => String(n).padStart(2, '0');
+                    el.innerText = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} WIB`;
+                }
+            }
+            setInterval(updateNavLiveClock, 1000);
+            updateNavLiveClock();
         })();
     </script>
     @yield('scripts')

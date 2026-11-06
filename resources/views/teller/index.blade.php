@@ -1477,8 +1477,22 @@
         const desc = document.getElementById('tellerStatusDescText');
         const updated = document.getElementById('tellerStatusUpdatedText');
 
-        if (updated && info.updated_at) {
-            updated.innerText = `(${info.updated_at})`;
+        if (updated) {
+            let timeString = '';
+            if (info.updated_at_iso) {
+                try {
+                    const d = new Date(info.updated_at_iso);
+                    timeString = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) + ', ' +
+                                 d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }).replace(/\./g, ':') + ' WIB';
+                } catch (e) {
+                    timeString = info.updated_at;
+                }
+            } else if (info.updated_at) {
+                timeString = info.updated_at;
+            }
+            if (timeString) {
+                updated.innerText = `(${timeString})`;
+            }
         }
 
         const btnBuka = document.getElementById('btnTellerStatusBuka');
