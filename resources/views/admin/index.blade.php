@@ -2241,7 +2241,7 @@
                     <td class="py-3 px-4 text-right font-bold text-slate-700">Rp ${Number(c.system_balance).toLocaleString('id-ID')}</td>
                     <td class="py-3 px-4 text-right font-bold text-indigo-700">Rp ${Number(c.physical_balance).toLocaleString('id-ID')}</td>
                     <td class="py-3 px-4 text-right font-black ${diff === 0 ? 'text-emerald-600' : 'text-rose-600'}">
-                        ${diff === 0 ? 'Klop (Rp 0)' : (diff > 0 ? '+Rp ' : '-Rp ') + Math.abs(diff).toLocaleString('id-ID')}
+                        ${diff === 0 ? 'Balance (Rp 0)' : (diff > 0 ? '+Rp ' : '-Rp ') + Math.abs(diff).toLocaleString('id-ID')}
                     </td>
                     <td class="py-3 px-4 text-center">
                         <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${

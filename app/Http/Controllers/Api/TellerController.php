@@ -737,7 +737,7 @@ class TellerController extends Controller
         );
 
         $message = ($difference === 0) 
-            ? 'Rekonsiliasi Kas Berhasil (KLOP Rp 0)! Laporan harian siap diverifikasi Administrator.'
+            ? 'Rekonsiliasi Kas Berhasil (Balance Rp 0)! Laporan harian siap diverifikasi Administrator.'
             : 'PERINGATAN: Terdeteksi Selisih Kas sebesar Rp ' . number_format($difference, 0, ',', '.') . ' (Status: DISPUTE). Harap periksa bundel slip transaksi fisik Anda.';
 
         return response()->json([

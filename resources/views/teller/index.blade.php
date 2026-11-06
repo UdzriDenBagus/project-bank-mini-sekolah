@@ -1122,7 +1122,7 @@
                 checkClosingNotice();
                 Swal.fire({
                     icon: res.data.data.status === 'dispute' ? 'warning' : 'success',
-                    title: res.data.data.status === 'dispute' ? 'Terdeteksi Selisih (Dispute)' : 'Closing Terkirim (Klop)',
+                    title: res.data.data.status === 'dispute' ? 'Terdeteksi Selisih (Dispute)' : 'Closing Terkirim (Balance)',
                     text: res.data.message
                 });
             } else {
