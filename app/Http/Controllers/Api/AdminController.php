@@ -261,11 +261,17 @@ class AdminController extends Controller
 
     /**
      * Import Data Anggota dari File Excel (.xlsx, .xls, .csv)
+     * Dioptimalkan dengan precomputed bcrypt hash, batch insert, dan setReadDataOnly
+     * Mampu memproses ribuan data siswa dalam hitungan detik tanpa batas waktu (timeout).
      */
     public function importMembersExcel(Request $request)
     {
+        @ini_set('max_execution_time', '300');
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
+
         $validator = Validator::make($request->all(), [
-            'file' => 'required|file|max:10240', // max 10MB
+            'file' => 'required|file|max:20480', // max 20MB
         ]);
 
         if ($validator->fails()) {
@@ -283,7 +289,7 @@ class AdminController extends Controller
         try {
             if (in_array($ext, ['csv', 'txt'])) {
                 if (($handle = fopen($file->getRealPath(), 'r')) !== false) {
-                    while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+                    while (($data = fgetcsv($handle, 4000, ',')) !== false) {
                         if (count($data) === 1 && strpos($data[0], ';') !== false) {
                             $data = str_getcsv($data[0], ';');
                         }
@@ -292,9 +298,13 @@ class AdminController extends Controller
                     fclose($handle);
                 }
             } else {
-                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getRealPath());
+                $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($file->getRealPath());
+                $reader->setReadDataOnly(true);
+                $spreadsheet = $reader->load($file->getRealPath());
                 $sheet = $spreadsheet->getActiveSheet();
-                $rows = $sheet->toArray(null, true, true, false);
+                $rows = $sheet->toArray(null, true, false, false);
+                $spreadsheet->disconnectWorksheets();
+                unset($spreadsheet, $reader);
             }
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal membaca berkas Excel: ' . $e->getMessage()], 422);
@@ -310,6 +320,7 @@ class AdminController extends Controller
         $nameCol = -1;
         $classCol = -1;
         $emailCol = -1;
+        $gradYearCol = -1;
 
         foreach ($headerRow as $idx => $colName) {
             $cleaned = strtoupper(trim((string)$colName));
@@ -319,6 +330,8 @@ class AdminController extends Controller
                 $nameCol = $idx;
             } elseif ($cleaned === 'KELAS' || str_contains($cleaned, 'KELAS') || str_contains($cleaned, 'CLASS')) {
                 $classCol = $idx;
+            } elseif (str_contains($cleaned, 'LULUS') || str_contains($cleaned, 'GRADUAT')) {
+                $gradYearCol = $idx;
             } elseif ($cleaned === 'EMAIL' || str_contains($cleaned, 'EMAIL') || str_contains($cleaned, 'SUREL') || str_contains($cleaned, 'GMAIL')) {
                 $emailCol = $idx;
             }
@@ -329,13 +342,23 @@ class AdminController extends Controller
         if ($classCol === -1) $classCol = 2;
         if ($emailCol === -1 && isset($headerRow[3])) $emailCol = 3;
 
+        // Pre-fetch seluruh NIS yang ada di database dalam 1 query hemat memori
+        $existingNisMap = Member::withTrashed()->pluck('name', 'nis')->toArray();
+        $seenNisInFile = [];
+
+        // Pre-compute Bcrypt hash SEKALI SAJA sebelum perulangan (menghemat ratusan detik)
+        $defaultPasswordHash = Hash::make('password123');
+
         $imported = 0;
         $skipped = 0;
         $errors = [];
+        $batch = [];
+        $now = now();
 
         DB::beginTransaction();
         try {
-            for ($i = 1; $i < count($rows); $i++) {
+            $totalRows = count($rows);
+            for ($i = 1; $i < $totalRows; $i++) {
                 $row = $rows[$i];
                 $nis = isset($row[$nisCol]) ? trim((string)$row[$nisCol]) : '';
                 $name = isset($row[$nameCol]) ? trim((string)$row[$nameCol]) : '';
@@ -358,30 +381,60 @@ class AdminController extends Controller
                     continue;
                 }
 
-                if (empty($class)) {
-                    $class = '10 RPL 1';
-                }
-
-                $existing = Member::withTrashed()->where('nis', $nis)->first();
-                if ($existing) {
+                if (isset($seenNisInFile[$nis])) {
                     $skipped++;
-                    $errors[] = "Baris " . ($i + 1) . ": NIS '{$nis}' sudah terdaftar ({$existing->name}).";
+                    $errors[] = "Baris " . ($i + 1) . ": NIS '{$nis}' terduplikasi di dalam berkas Excel ini.";
+                    continue;
+                }
+                $seenNisInFile[$nis] = true;
+
+                if (isset($existingNisMap[$nis])) {
+                    $skipped++;
+                    $errors[] = "Baris " . ($i + 1) . ": NIS '{$nis}' sudah terdaftar di sistem ({$existingNisMap[$nis]}).";
                     continue;
                 }
 
-                $gradYear = Member::calculateGraduationYear($class);
+                if (empty($class)) {
+                    $class = 'X RPL 1';
+                }
 
-                Member::create([
+                $gradYear = null;
+                if ($gradYearCol !== -1 && isset($row[$gradYearCol])) {
+                    $rawYear = (int) trim((string)$row[$gradYearCol]);
+                    if ($rawYear >= 2024 && $rawYear <= 2040) {
+                        $gradYear = $rawYear;
+                    }
+                }
+                if (!$gradYear) {
+                    $gradYear = Member::calculateGraduationYear($class);
+                }
+
+                $batch[] = [
                     'nis'             => $nis,
                     'name'            => $name,
                     'class_name'      => $class,
-                    'email'           => !empty($email) ? $email : null,
+                    'email'           => (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) ? $email : null,
                     'graduation_year' => $gradYear,
-                    'password'        => Hash::make('password123'),
+                    'password'        => $defaultPasswordHash,
                     'status'          => 'inactive_account',
-                ]);
+                    'created_at'      => $now,
+                    'updated_at'      => $now,
+                ];
 
                 $imported++;
+                $existingNisMap[$nis] = $name;
+
+                // Batch insert per 200 baris agar super cepat dan hemat memori
+                if (count($batch) >= 200) {
+                    Member::insert($batch);
+                    $batch = [];
+                }
+            }
+
+            // Simpan sisa batch terakhir
+            if (!empty($batch)) {
+                Member::insert($batch);
+                $batch = [];
             }
 
             DB::commit();
@@ -396,7 +449,7 @@ class AdminController extends Controller
                 'message'  => $msg,
                 'imported' => $imported,
                 'skipped'  => $skipped,
-                'errors'   => $errors,
+                'errors'   => array_slice($errors, 0, 50),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -1506,6 +1506,13 @@
         btn.disabled = true;
         btn.innerHTML = ' Mengimpor...';
 
+        Swal.fire({
+            title: 'Memproses Berkas Excel...',
+            html: 'Sedang membaca dan mengimpor ribuan data anggota sekolah.<br><small class="text-slate-400">Proses ini berjalan cepat, mohon jangan menutup jendela ini.</small>',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
 
