@@ -342,14 +342,16 @@ class AdminController extends Controller
         if ($classCol === -1) $classCol = 2;
         if ($emailCol === -1 && isset($headerRow[3])) $emailCol = 3;
 
-        // Pre-fetch seluruh NIS yang ada di database dalam 1 query hemat memori
-        $existingNisMap = Member::withTrashed()->pluck('name', 'nis')->toArray();
+        // Pre-fetch seluruh anggota yang ada di database (termasuk trashed)
+        $existingMembers = Member::withTrashed()->get(['id', 'nis', 'name', 'class_name', 'graduation_year', 'deleted_at'])->keyBy('nis');
         $seenNisInFile = [];
 
         // Pre-compute Bcrypt hash SEKALI SAJA sebelum perulangan (menghemat ratusan detik)
         $defaultPasswordHash = Hash::make('password123');
 
         $imported = 0;
+        $updated = 0;
+        $restored = 0;
         $skipped = 0;
         $errors = [];
         $batch = [];
@@ -388,12 +390,6 @@ class AdminController extends Controller
                 }
                 $seenNisInFile[$nis] = true;
 
-                if (isset($existingNisMap[$nis])) {
-                    $skipped++;
-                    $errors[] = "Baris " . ($i + 1) . ": NIS '{$nis}' sudah terdaftar di sistem ({$existingNisMap[$nis]}).";
-                    continue;
-                }
-
                 if (empty($class)) {
                     $class = 'X RPL 1';
                 }
@@ -409,6 +405,34 @@ class AdminController extends Controller
                     $gradYear = Member::calculateGraduationYear($class);
                 }
 
+                // Cek jika NIS sudah terdaftar di database
+                if (isset($existingMembers[$nis])) {
+                    $existing = $existingMembers[$nis];
+                    if ($existing->trashed()) {
+                        // Jika sebelumnya ter-soft delete (misal otomatis terhapus karena tahun kelulusan), pulihkan
+                        $existing->restore();
+                        $existing->update([
+                            'name'            => $name,
+                            'class_name'      => $class,
+                            'graduation_year' => $gradYear,
+                            'status'          => 'inactive_account',
+                            'email'           => (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) ? $email : $existing->email,
+                        ]);
+                        $restored++;
+                        $imported++;
+                    } else {
+                        // Perbarui data kelas dan tahun kelulusan agar akurat sesuai siklus tahun ajaran
+                        $existing->update([
+                            'name'            => $name,
+                            'class_name'      => $class,
+                            'graduation_year' => $gradYear,
+                            'email'           => (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) ? $email : $existing->email,
+                        ]);
+                        $updated++;
+                    }
+                    continue;
+                }
+
                 $batch[] = [
                     'nis'             => $nis,
                     'name'            => $name,
@@ -422,7 +446,6 @@ class AdminController extends Controller
                 ];
 
                 $imported++;
-                $existingNisMap[$nis] = $name;
 
                 // Batch insert per 200 baris agar super cepat dan hemat memori
                 if (count($batch) >= 200) {
@@ -439,15 +462,21 @@ class AdminController extends Controller
 
             DB::commit();
 
-            $msg = "Berhasil mengimpor {$imported} data anggota siswa.";
-            if ($skipped > 0) {
-                $msg .= " ({$skipped} baris dilewati).";
+            $msg = "Berhasil memproses berkas Excel: {$imported} data baru/dipulihkan ditambahkan";
+            if ($updated > 0) {
+                $msg .= ", {$updated} data diperbarui";
             }
+            if ($skipped > 0) {
+                $msg .= ", {$skipped} baris dilewati";
+            }
+            $msg .= ".";
 
             return response()->json([
                 'success'  => true,
                 'message'  => $msg,
                 'imported' => $imported,
+                'updated'  => $updated,
+                'restored' => $restored,
                 'skipped'  => $skipped,
                 'errors'   => array_slice($errors, 0, 50),
             ]);
@@ -1057,8 +1086,10 @@ class AdminController extends Controller
 
     public function processStudentLifecycle()
     {
-        // 1. Kenaikan Kelas Tahunan & Kelulusan Siklus Juni
-        $this->processClassPromotion();
+        // 1. Kenaikan Kelas Tahunan Otomatis hanya berjalan jika bulan Juni (Siklus akhir tahun ajaran)
+        if ((int)now()->month === 6) {
+            $this->processClassPromotion();
+        }
 
         // 2. Siswa lulus yang masih berstatus aktif dipindahkan ke Sampah (Data Terhapus)
         $graduatedActive = Member::whereNull('deleted_at')
@@ -1073,16 +1104,25 @@ class AdminController extends Controller
             $gm->delete();
         }
 
-        // 3. Siswa tingkat akhir yang telah mencapai tahun kelulusan dan berstatus lulus
+        // 3. Siswa tingkat akhir yang telah mencapai tahun kelulusan dan sudah melewati bulan Juni
         $currentYear = (int) now()->year;
+        $currentMonth = (int) now()->month;
+
         $overdueGraduates = Member::whereNull('deleted_at')
-                                  ->where('graduation_year', '<=', $currentYear)
+                                  ->where(function ($q) use ($currentYear, $currentMonth) {
+                                      $q->where('graduation_year', '<', $currentYear)
+                                        ->orWhere(function ($q2) use ($currentYear, $currentMonth) {
+                                            $q2->where('graduation_year', '=', $currentYear)
+                                               ->whereRaw('? >= 6', [$currentMonth]);
+                                        });
+                                  })
                                   ->where(function ($q) {
                                       $q->where('class_name', 'like', '%12%')
                                         ->orWhere('class_name', 'like', '%XII%')
                                         ->orWhere('class_name', 'like', '%Lulus%')
                                         ->orWhere('class_name', 'like', '%Alumni%');
                                   })
+                                  ->where('created_at', '<', now()->subMonths(1))
                                   ->get();
 
         foreach ($overdueGraduates as $m) {

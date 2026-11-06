@@ -76,35 +76,50 @@ class Member extends Authenticatable
 
     /**
      * Hitung tahun kelulusan otomatis berdasarkan jenjang kelas (Masa studi SMK 3 tahun):
-     * - Kelas X (10)  : currentYear + 2 (Tahun ke-1, lulus 2 tahun lagi -> contoh: 2026 + 2 = 2028)
-     * - Kelas XI (11) : currentYear + 1 (Tahun ke-2, lulus 1 tahun lagi -> contoh: 2026 + 1 = 2027)
-     * - Kelas XII (12): currentYear     (Tahun ke-3 / tingkat akhir, lulus tahun ini -> 2026)
+     * Siklus kalender akademik Indonesia berlangsung dari Juli s.d. Juni (kelulusan bulan Juni):
+     * - Periode Juni - Desember (Semester Ganjil, e.g. Nov 2026):
+     *   Tahun Ajaran adalah 2026/2027.
+     *   * Kelas XII (12) : Lulus Juni tahun depan (2026 + 1 = 2027)
+     *   * Kelas XI (11)  : Lulus Juni 2 tahun lagi (2026 + 2 = 2028)
+     *   * Kelas X (10)   : Lulus Juni 3 tahun lagi (2026 + 3 = 2029)
+     * - Periode Januari - Mei (Semester Genap, e.g. Feb 2027):
+     *   Tahun Ajaran adalah 2026/2027.
+     *   * Kelas XII (12) : Lulus Juni tahun berjalan (2027)
+     *   * Kelas XI (11)  : Lulus Juni tahun depan (2027 + 1 = 2028)
+     *   * Kelas X (10)   : Lulus Juni 2 tahun lagi (2027 + 2 = 2029)
      */
-    public static function calculateGraduationYear(?string $className, ?int $baseYear = null): int
+    public static function calculateGraduationYear(?string $className, ?int $baseYear = null, ?int $baseMonth = null): int
     {
         $currentYear = $baseYear ?: (int)date('Y');
+        $currentMonth = $baseMonth ?: (int)date('n');
+
+        // Target tahun kelulusan untuk angkatan tingkat akhir (Kelas 12) yang aktif di tahun ajaran berjalan:
+        // Jika bulan Juni - Desember, kelulusan jatuh pada Juni tahun berikutnya (currentYear + 1).
+        // Jika bulan Januari - Mei, kelulusan jatuh pada Juni tahun berjalan (currentYear).
+        $targetGradYear = ($currentMonth >= 6) ? ($currentYear + 1) : $currentYear;
+
         if (empty($className)) {
-            return $currentYear + 2;
+            return $targetGradYear + 2;
         }
 
         $trimmed = trim($className);
 
-        // Kelas 12 / XII atau Alumni: lulus tahun berjalan (currentYear)
+        // Kelas 12 / XII atau Alumni: lulus pada akhir tahun ajaran berjalan (Juni)
         if (preg_match('/\b(12|XII|Lulus|Alumni)\b/i', $trimmed) || preg_match('/^(12|XII)\b/i', $trimmed)) {
-            return $currentYear;
+            return $targetGradYear;
         }
 
-        // Kelas 11 / XI: lulus 1 tahun berikutnya (currentYear + 1)
+        // Kelas 11 / XI: lulus 1 tahun setelah tingkat akhir
         if (preg_match('/\b(11|XI)\b/i', $trimmed) || preg_match('/^(11|XI)\b/i', $trimmed)) {
-            return $currentYear + 1;
+            return $targetGradYear + 1;
         }
 
-        // Kelas 10 / X: siswa baru 3 tahun masa studi, lulus 2 tahun berikutnya (currentYear + 2)
+        // Kelas 10 / X: siswa baru masa studi 3 tahun, lulus 2 tahun setelah tingkat akhir
         if (preg_match('/\b(10|X)\b/i', $trimmed) || preg_match('/^(10|X)\b/i', $trimmed)) {
-            return $currentYear + 2;
+            return $targetGradYear + 2;
         }
 
-        return $currentYear + 2;
+        return $targetGradYear + 2;
     }
 
     /**
