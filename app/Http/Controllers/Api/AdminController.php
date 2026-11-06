@@ -1560,13 +1560,15 @@ class AdminController extends Controller
             $query->where('teller_id', $request->teller_id);
         }
 
-        $advances = $query->paginate(15);
+        $advances = $query->limit(100)->get();
         $pendingCount = TellerCashAdvance::where('status', 'pending')->count();
+        $approvedToday = (int) TellerCashAdvance::whereDate('request_date', today())->where('status', 'approved')->sum('amount');
 
         return response()->json([
-            'success'       => true,
-            'data'          => $advances,
-            'pending_count' => $pendingCount,
+            'success'        => true,
+            'data'           => $advances,
+            'pending_count'  => $pendingCount,
+            'approved_today' => $approvedToday,
         ]);
     }
 

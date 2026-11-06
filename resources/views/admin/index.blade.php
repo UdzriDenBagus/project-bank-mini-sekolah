@@ -483,8 +483,8 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <select id="filterAdvanceStatus" onchange="loadAdminCashAdvances()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                        <option value="all">Semua Status</option>
-                        <option value="pending" selected>Menunggu Approval (Pending)</option>
+                        <option value="all" selected>Semua Status</option>
+                        <option value="pending">Menunggu Approval (Pending)</option>
                         <option value="approved">Disetujui (Approved)</option>
                         <option value="rejected">Ditolak (Rejected)</option>
                     </select>
@@ -2744,24 +2744,35 @@
 
         const res = await fetchAPI(url);
         if (res && res.data && res.data.success) {
-            const items = res.data.data.data || res.data.data || [];
+            const raw = res.data.data;
+            const items = Array.isArray(raw) ? raw : (raw.data || []);
             adminPagination.advances.rawData = items;
             
-            // Hitung modal approved hari ini
-            const todayStr = new Date().toISOString().slice(0, 10);
-            let approvedToday = 0;
-            items.forEach(a => {
-                if (a.status === 'approved' && a.request_date && a.request_date.startsWith(todayStr)) {
-                    approvedToday += Number(a.amount || 0);
-                }
-            });
+            // Hitung modal approved hari ini dari response server
+            const approvedToday = (res.data.approved_today !== undefined) ? res.data.approved_today : items.reduce((acc, a) => {
+                const todayStr = new Date().toISOString().slice(0, 10);
+                return (a.status === 'approved' && a.request_date && a.request_date.startsWith(todayStr)) ? acc + Number(a.amount || 0) : acc;
+            }, 0);
+
             const approvedTodayEl = document.getElementById('advApprovedTodayText');
             if (approvedTodayEl) {
-                approvedTodayEl.innerText = `Rp ${approvedToday.toLocaleString('id-ID')}`;
+                approvedTodayEl.innerText = `Rp ${Number(approvedToday).toLocaleString('id-ID')}`;
             }
 
             // Update pending count
-            checkPendingAdvancesCount();
+            if (res.data.pending_count !== undefined) {
+                const badge = document.getElementById('badgePendingAdvances');
+                if (badge) {
+                    badge.innerText = res.data.pending_count;
+                    badge.classList.toggle('hidden', res.data.pending_count === 0);
+                }
+                const pendingText = document.getElementById('advPendingCountText');
+                if (pendingText) {
+                    pendingText.innerText = `${res.data.pending_count} Permohonan`;
+                }
+            } else {
+                checkPendingAdvancesCount();
+            }
 
             filterAdminTable('advances');
         }
