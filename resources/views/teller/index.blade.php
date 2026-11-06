@@ -14,7 +14,7 @@
                 <span id="tellerCurrentStatusBadge" class="text-xs font-black px-3 py-1 rounded-full uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
                     BUKA
                 </span>
-                <span id="tellerStatusUpdatedText" class="text-[11px] text-slate-400 font-mono hidden sm:inline"></span>
+                <span id="tellerStatusUpdatedText" class="text-xs font-bold text-slate-600 font-mono bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200 shadow-sm"></span>
             </div>
             <p id="tellerStatusDescText" class="text-xs text-slate-500 mt-0.5">
                 Loket Buka - Siap melayani setoran & penarikan nasabah (terhubung langsung ke mobile nasabah).
@@ -1470,30 +1470,30 @@
         }
     }
 
+    // Jam Real-Time On-Time khusus Status Layanan Loket (WIB / Asia-Jakarta)
+    function updateTellerStatusClock() {
+        const updated = document.getElementById('tellerStatusUpdatedText');
+        if (!updated) return;
+        const now = new Date();
+        try {
+            const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+            const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }).replace(/\./g, ':');
+            updated.innerText = `(${dateStr}, ${timeStr} WIB)`;
+        } catch (e) {
+            const pad = n => String(n).padStart(2, '0');
+            updated.innerText = `(${pad(now.getDate())} Nov ${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} WIB)`;
+        }
+    }
+    setInterval(updateTellerStatusClock, 1000);
+    updateTellerStatusClock();
+
     function renderTellerStatusUI(info) {
         const status = (info.status || 'buka').toLowerCase();
         const badge = document.getElementById('tellerCurrentStatusBadge');
         const dot = document.getElementById('tellerStatusDot');
         const desc = document.getElementById('tellerStatusDescText');
-        const updated = document.getElementById('tellerStatusUpdatedText');
-
-        if (updated) {
-            let timeString = '';
-            if (info.updated_at_iso) {
-                try {
-                    const d = new Date(info.updated_at_iso);
-                    timeString = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) + ', ' +
-                                 d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }).replace(/\./g, ':') + ' WIB';
-                } catch (e) {
-                    timeString = info.updated_at;
-                }
-            } else if (info.updated_at) {
-                timeString = info.updated_at;
-            }
-            if (timeString) {
-                updated.innerText = `(${timeString})`;
-            }
-        }
+        
+        updateTellerStatusClock();
 
         const btnBuka = document.getElementById('btnTellerStatusBuka');
         const btnIstirahat = document.getElementById('btnTellerStatusIstirahat');

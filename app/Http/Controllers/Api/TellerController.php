@@ -884,16 +884,27 @@ class TellerController extends Controller
             }
         }
 
-        if (!$statusData || !is_array($statusData)) {
+        if (!$statusData || !is_array($statusData) || empty($statusData['updated_at_iso'])) {
+            $status = (is_array($statusData) && !empty($statusData['status'])) ? $statusData['status'] : 'buka';
+            $meta = [
+                'buka' => ['label' => 'BUKA', 'color' => 'emerald', 'description' => 'Loket Buka - Siap melayani setoran & penarikan'],
+                'istirahat' => ['label' => 'ISTIRAHAT', 'color' => 'amber', 'description' => 'Loket Sedang Istirahat - Pelayanan dijeda sementara'],
+                'tutup' => ['label' => 'TUTUP', 'color' => 'rose', 'description' => 'Loket Tutup - Pelayanan loket telah berakhir'],
+            ];
+            $currentStatus = in_array($status, ['buka', 'istirahat', 'tutup']) ? $status : 'buka';
             $statusData = [
-                'status'      => 'buka',
-                'label'       => 'BUKA',
-                'color'       => 'emerald',
-                'description' => 'Loket Buka - Siap melayani setoran & penarikan',
+                'status'         => $currentStatus,
+                'label'          => $meta[$currentStatus]['label'],
+                'color'          => $meta[$currentStatus]['color'],
+                'description'    => $meta[$currentStatus]['description'],
                 'updated_at'     => now()->setTimezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') . ' WIB',
                 'updated_at_iso' => now()->setTimezone('Asia/Jakarta')->toIso8601String(),
                 'teller_name'    => 'Petugas Loket',
             ];
+            Cache::forever('teller_service_status', $statusData);
+            try {
+                @file_put_contents(storage_path('app/teller_status.json'), json_encode($statusData));
+            } catch (\Exception $e) {}
         }
 
         return response()->json([
