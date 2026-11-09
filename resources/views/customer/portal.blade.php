@@ -7,12 +7,15 @@
     <!-- Top Header: Profil Nasabah Siswa -->
     <div class="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-800/40">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div class="space-y-1">
-                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-semibold">
-                    <span>Portal Tabungan Digital Siswa</span>
+            <div class="flex items-center space-x-4">
+                <img src="{{ asset('images/logo_fintech.png') }}" alt="Logo Bank Mini" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover shadow-md border border-white/20">
+                <div class="space-y-1">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-semibold">
+                        <span>Portal Tabungan Digital Siswa</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight" id="customer_name">Memuat Nama...</h1>
+                    <p class="text-xs sm:text-sm text-indigo-200" id="customer_info">NIS: - • Kelas: - • No. Rek: -</p>
                 </div>
-                <h1 class="text-2xl sm:text-3xl font-black tracking-tight" id="customer_name">Memuat Nama...</h1>
-                <p class="text-xs sm:text-sm text-indigo-200" id="customer_info">NIS: - • Kelas: - • No. Rek: -</p>
             </div>
             <div class="flex items-center space-x-3">
                 <button onclick="loadCustomerData()" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border border-white/10">
