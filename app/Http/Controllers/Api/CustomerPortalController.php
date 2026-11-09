@@ -44,17 +44,26 @@ class CustomerPortalController extends Controller
             $email = $user->email;
         }
 
+        $balance = (int) $user->balance;
+        $heldBalance = 10000;
+        $maxAvailable = max(0, $balance - $heldBalance);
+        $maxDirect = min(1000000, $maxAvailable);
+
         return response()->json([
             'success' => true,
             'data'    => [
-                'is_active'      => true,
-                'account_number' => $user->account_number,
-                'nis'            => $user->nis,
-                'name'           => $user->name,
-                'class_name'     => $user->class_name,
-                'email'          => $email,
-                'balance'        => (int) $user->balance,
-                'status'         => $user->status ?? 'active',
+                'is_active'              => true,
+                'account_number'         => $user->account_number,
+                'nis'                    => $user->nis,
+                'name'                   => $user->name,
+                'class_name'             => $user->class_name,
+                'email'                  => $email,
+                'balance'                => $balance,
+                'held_balance'           => $heldBalance,
+                'max_available_balance'  => $maxAvailable,
+                'max_direct_withdrawal'  => $maxDirect,
+                'withdrawal_notice'      => 'Penarikan di atas Rp 1.000.000 wajib melakukan perjanjian dengan pihak teller minimal 1 hari sebelum penarikan (H-1).',
+                'status'                 => $user->status ?? 'active',
             ]
         ]);
     }

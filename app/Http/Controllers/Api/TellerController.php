@@ -14,6 +14,8 @@ use App\Models\Transaction;
 use App\Models\AccountingJournal;
 use App\Models\CashClosing;
 use App\Models\TellerCashAdvance;
+use App\Models\WithdrawalAppointment;
+use Carbon\Carbon;
 
 class TellerController extends Controller
 {
@@ -274,17 +276,34 @@ class TellerController extends Controller
                 ], 422);
             }
 
+            $balance = (int) $saver->balance;
+            $heldBalance = 10000;
+            $maxAvailable = max(0, $balance - $heldBalance);
+            $maxDirect = min(1000000, $maxAvailable);
+
+            $activeH1 = WithdrawalAppointment::where('saver_id', $saver->id)
+                ->where('status', 'approved')
+                ->whereDate('appointment_date', '<=', today()->subDay())
+                ->whereDate('withdrawal_date', '<=', today())
+                ->orderBy('id', 'desc')
+                ->first();
+
             return response()->json([
                 'success' => true,
                 'data'    => [
-                    'id'             => $saver->id,
-                    'account_number' => $saver->account_number,
-                    'nis'            => $saver->nis,
-                    'name'           => $saver->name,
-                    'class_name'     => $saver->class_name,
-                    'balance'        => (int) $saver->balance,
-                    'status'         => $saver->status,
-                    'email'          => ($saver->member && $saver->member->email) ? $saver->member->email : null,
+                    'id'                     => $saver->id,
+                    'account_number'         => $saver->account_number,
+                    'nis'                    => $saver->nis,
+                    'name'                   => $saver->name,
+                    'class_name'             => $saver->class_name,
+                    'balance'                => $balance,
+                    'held_balance'           => $heldBalance,
+                    'max_available_balance'  => $maxAvailable,
+                    'max_direct_withdrawal'  => $maxDirect,
+                    'has_active_appointment' => !is_null($activeH1),
+                    'active_appointment'     => $activeH1,
+                    'status'                 => $saver->status,
+                    'email'                  => ($saver->member && $saver->member->email) ? $saver->member->email : null,
                 ]
             ]);
         }
@@ -496,6 +515,7 @@ class TellerController extends Controller
             $amount = (int) $request->amount;
             $balanceBefore = (int) $saver->balance;
             $minimumBalance = 10000;
+            $maxDirectLimit = 1000000; // Batas penarikan langsung maksimal Rp 1.000.000
 
             // B. Validasi Batas Saldo Mengendap Minimum Rp 10.000
             if ($balanceBefore === 0) {
@@ -514,15 +534,79 @@ class TellerController extends Controller
                 ], 422);
             }
 
-            $remainingBalance = $balanceBefore - $amount;
+            $maxAvailableBalance = $balanceBefore - $minimumBalance;
 
-            if ($remainingBalance < $minimumBalance) {
-                $maxWithdraw = $balanceBefore - $minimumBalance;
+            // Saldo mengendap 10k: jika saldo nasabah hanya 1 juta, maksimal tarik hanya 990k
+            if ($amount > $maxAvailableBalance) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'Penarikan Ditolak: Sisa saldo setelah penarikan tidak boleh di bawah saldo mengendap minimum (Rp 10.000). Maksimal penarikan yang diizinkan adalah Rp ' . number_format($maxWithdraw, 0, ',', '.') . '.'
+                    'message' => 'Penarikan Ditolak: Sisa saldo setelah penarikan tidak boleh di bawah saldo mengendap minimum (Rp 10.000). Saldo nasabah saat ini Rp ' . number_format($balanceBefore, 0, ',', '.') . ', sehingga maksimal dana yang dapat ditarik adalah Rp ' . number_format($maxAvailableBalance, 0, ',', '.') . '.'
                 ], 422);
+            }
+
+            // C. Validasi Batas Maksimal Penarikan Langsung (Rp 1.000.000) vs Wajib Perjanjian H-1
+            if ($amount > $maxDirectLimit) {
+                $hasValidAppointment = false;
+                $appointment = null;
+
+                // 1. Cek dari appointment_id jika dipilih di form
+                if ($request->filled('appointment_id')) {
+                    $apt = WithdrawalAppointment::where('id', $request->appointment_id)
+                        ->where('saver_id', $saver->id)
+                        ->where('status', 'approved')
+                        ->first();
+                    if ($apt && Carbon::parse($apt->appointment_date)->startOfDay()->lte(today()->subDay()->endOfDay())) {
+                        $hasValidAppointment = true;
+                        $appointment = $apt;
+                    }
+                }
+
+                // 2. Cek apakah ada perjanjian aktif di database yang dibuat minimal H-1
+                if (!$hasValidAppointment) {
+                    $apt = WithdrawalAppointment::where('saver_id', $saver->id)
+                        ->where('status', 'approved')
+                        ->whereDate('appointment_date', '<=', today()->subDay())
+                        ->whereDate('withdrawal_date', '<=', today())
+                        ->orderBy('id', 'desc')
+                        ->first();
+                    if ($apt) {
+                        $hasValidAppointment = true;
+                        $appointment = $apt;
+                    }
+                }
+
+                // 3. Cek konfirmasi manual teller di loket (jika perjanjian H-1 dibuat lisan/nota)
+                if (!$hasValidAppointment && $request->boolean('appointment_confirmed')) {
+                    $manualDate = $request->appointment_date ? Carbon::parse($request->appointment_date)->startOfDay() : null;
+                    if ($manualDate && $manualDate->lte(today()->subDay()->endOfDay())) {
+                        $hasValidAppointment = true;
+                        $appointment = WithdrawalAppointment::create([
+                            'saver_id'         => $saver->id,
+                            'teller_id'        => $request->user()->id,
+                            'appointment_date' => $manualDate,
+                            'withdrawal_date'  => today(),
+                            'amount'           => $amount,
+                            'status'           => 'completed',
+                            'notes'            => 'Perjanjian penarikan H-1 dikonfirmasi manual oleh teller di loket',
+                        ]);
+                    }
+                }
+
+                if (!$hasValidAppointment) {
+                    $maxDirectPossible = min($maxDirectLimit, $maxAvailableBalance);
+                    DB::rollBack();
+                    return response()->json([
+                        'success'       => false,
+                        'is_over_limit' => true,
+                        'max_direct'    => $maxDirectPossible,
+                        'message'       => 'Penarikan Ditolak: Penarikan dana di atas Rp 1.000.000 wajib melakukan perjanjian dengan pihak teller minimal 1 hari sebelum penarikan (H-1). Saldo nasabah mencukupi, namun untuk penarikan langsung di loket tanpa perjanjian maksimal adalah Rp ' . number_format($maxDirectPossible, 0, ',', '.') . ' (dengan saldo mengendap Rp 10.000).'
+                    ], 422);
+                }
+
+                if ($appointment && $appointment->status !== 'completed') {
+                    $appointment->update(['status' => 'completed']);
+                }
             }
 
             $balanceAfter = $remainingBalance;
@@ -991,6 +1075,79 @@ class TellerController extends Controller
             'success' => true,
             'message' => 'Status loket teller berhasil diperbarui menjadi: ' . $meta[$status]['label'],
             'data'    => $payload,
+        ]);
+    }
+
+    /**
+     * 14. Ambil Daftar Perjanjian Penarikan Dana Besar Nasabah
+     */
+    public function getWithdrawalAppointments(Request $request)
+    {
+        $saverId = $request->saver_id ?? $request->customer_id;
+        if (!$saverId) {
+            return response()->json(['success' => false, 'message' => 'ID Nasabah diperlukan.'], 422);
+        }
+
+        $appointments = WithdrawalAppointment::with(['teller'])
+            ->where('saver_id', $saverId)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $activeH1 = $appointments->first(function ($apt) {
+            return $apt->status === 'approved' && Carbon::parse($apt->appointment_date)->startOfDay()->lte(today()->subDay()->endOfDay());
+        });
+
+        return response()->json([
+            'success'   => true,
+            'data'      => $appointments,
+            'active_h1' => $activeH1,
+        ]);
+    }
+
+    /**
+     * 15. Buat Perjanjian Penarikan Dana Besar (> Rp 1.000.000, Minimal H-1)
+     */
+    public function createWithdrawalAppointment(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'saver_id'        => 'required|exists:savers,id',
+            'amount'          => 'required|integer|min:1000001',
+            'withdrawal_date' => 'required|date|after_or_equal:tomorrow',
+            'notes'           => 'nullable|string|max:255',
+        ], [
+            'amount.min'                     => 'Nominal perjanjian penarikan harus di atas Rp 1.000.000.',
+            'withdrawal_date.after_or_equal' => 'Tanggal rencana penarikan wajib minimal 1 hari ke depan (H-1 dari hari ini).',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $saver = Saver::findOrFail($request->saver_id);
+        $minimumBalance = 10000;
+        $maxAvailable = $saver->balance - $minimumBalance;
+
+        if ($request->amount > $maxAvailable) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rencana Penarikan Melebihi Saldo: Saldo nasabah saat ini Rp ' . number_format($saver->balance, 0, ',', '.') . '. Batas maksimal penarikan setelah memperhitungkan saldo mengendap (Rp 10.000) adalah Rp ' . number_format(max(0, $maxAvailable), 0, ',', '.') . '.'
+            ], 422);
+        }
+
+        $appointment = WithdrawalAppointment::create([
+            'saver_id'         => $saver->id,
+            'teller_id'        => $request->user()->id,
+            'appointment_date' => today(),
+            'withdrawal_date'  => $request->withdrawal_date,
+            'amount'           => $request->amount,
+            'status'           => 'approved',
+            'notes'            => $request->notes ?? 'Perjanjian penarikan dana besar di loket teller',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Perjanjian penarikan dana besar sebesar Rp ' . number_format($request->amount, 0, ',', '.') . ' untuk tanggal ' . Carbon::parse($request->withdrawal_date)->translatedFormat('d F Y') . ' berhasil dicatat!',
+            'data'    => $appointment,
         ]);
     }
 }

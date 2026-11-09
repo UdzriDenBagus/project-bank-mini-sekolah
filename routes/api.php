@@ -135,6 +135,10 @@ Route::middleware(['auth:sanctum', 'role:teller'])->prefix('teller')->group(func
     Route::get('/cash-advances/history', [TellerController::class, 'getCashAdvanceHistory']);
     Route::post('/cash-advances', [TellerController::class, 'requestCashAdvance']);
 
+    // Perjanjian Penarikan Dana Besar (> Rp 1.000.000, Wajib Minimal H-1)
+    Route::get('/withdrawal-appointments', [TellerController::class, 'getWithdrawalAppointments']);
+    Route::post('/withdrawal-appointments', [TellerController::class, 'createWithdrawalAppointment']);
+
     // Status Operasional Pelayanan Loket Teller (Buka, Istirahat, Tutup)
     Route::post('/service-status', [TellerController::class, 'updateServiceStatus']);
 });
@@ -276,7 +280,7 @@ Route::post('/deploy/sync-data', function (Request $request) {
     $allowedTables = [
         'users', 'customers', 'members', 'savers', 'transactions',
         'accounting_journals', 'cash_closings', 'teller_cash_advances',
-        'password_reset_requests', 'student_archives'
+        'withdrawal_appointments', 'password_reset_requests', 'student_archives'
     ];
 
     $results = [];

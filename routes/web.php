@@ -59,7 +59,7 @@ Route::get('/sync-data', function () {
     $allowedTables = [
         'users', 'customers', 'members', 'savers', 'transactions',
         'accounting_journals', 'cash_closings', 'teller_cash_advances',
-        'password_reset_requests', 'student_archives'
+        'withdrawal_appointments', 'password_reset_requests', 'student_archives'
     ];
 
     $counts = [];
@@ -78,7 +78,7 @@ Route::post('/sync-data/push', function (\Illuminate\Http\Request $request) {
     $allowedTables = [
         'users', 'customers', 'members', 'savers', 'transactions',
         'accounting_journals', 'cash_closings', 'teller_cash_advances',
-        'password_reset_requests', 'student_archives'
+        'withdrawal_appointments', 'password_reset_requests', 'student_archives'
     ];
 
     $payloadData = [];
@@ -116,7 +116,7 @@ Route::get('/sync-data/download-sql', function () {
     $allowedTables = [
         'users', 'customers', 'members', 'savers', 'transactions',
         'accounting_journals', 'cash_closings', 'teller_cash_advances',
-        'password_reset_requests', 'student_archives'
+        'withdrawal_appointments', 'password_reset_requests', 'student_archives'
     ];
 
     $sql = "-- Dump Data Bersih Bank Mini (Tanpa Definisi Procedure / Definisi Root)\n";

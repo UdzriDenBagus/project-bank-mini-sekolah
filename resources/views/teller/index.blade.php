@@ -101,13 +101,23 @@
                     <span> Saldo Mengendap: <b class="text-white">Rp 10.000</b></span>
                     <span id="custSaldoDitarikText">Bisa Ditarik: <b class="text-emerald-400">Rp 0</b></span>
                 </div>
+                <div class="text-[10px] text-indigo-300/80 bg-white/5 p-2 rounded-xl flex items-center justify-between">
+                    <span>Maks. Tarik Langsung: <b class="text-amber-300">Rp 1.000.000</b></span>
+                    <span>> Rp 1 Jt: <b class="text-indigo-200">Wajib Janji H-1</b></span>
+                </div>
             </div>
 
             <!-- Tombol Transaksi Setor & Tarik -->
-            <div class="grid grid-cols-2 gap-3 pt-2">
-                <button onclick="openDepositModal()" class="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow transition text-xs flex items-center justify-center"> Setor Tunai
-                </button>
-                <button onclick="openWithdrawModal()" class="py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl shadow transition text-xs flex items-center justify-center"> Tarik Tunai
+            <div class="space-y-2 pt-2">
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="openDepositModal()" class="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow transition text-xs flex items-center justify-center"> Setor Tunai
+                    </button>
+                    <button onclick="openWithdrawModal()" class="py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl shadow transition text-xs flex items-center justify-center"> Tarik Tunai
+                    </button>
+                </div>
+                <button onclick="openWithdrawalAppointmentModal()" type="button" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-2xl text-xs transition border border-indigo-200 flex items-center justify-center space-x-1.5 shadow-xs">
+                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span>Buat Janji Tarik Tunai (> Rp 1 Jt / H-1)</span>
                 </button>
             </div>
         </div>
@@ -297,30 +307,93 @@
     </div>
 </div>
 
-<!-- Modal Tarik Tunai (Verifikasi PIN & Batas Saldo Mengendap) -->
+<!-- Modal Tarik Tunai (Verifikasi PIN, Batas Saldo Mengendap & Aturan H-1) -->
 <div id="modalWithdraw" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-        <h3 class="font-black text-slate-800 text-lg flex items-center"> Transaksi Penarikan Tunai
-        </h3>
-        <p class="text-xs text-slate-500">Saldo mengendap minimum yang wajib tersisa di rekening adalah <b>Rp 10.000</b>.</p>
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b pb-3">
+            <h3 class="font-black text-slate-800 text-lg flex items-center space-x-2">
+                <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                <span>Transaksi Penarikan Tunai</span>
+            </h3>
+            <button type="button" onclick="closeModal('modalWithdraw')" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <!-- Ketentuan Penarikan Box -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 space-y-1">
+            <div class="flex justify-between">
+                <span>• Saldo Mengendap Wajib:</span>
+                <b class="text-slate-900">Rp 10.000</b>
+            </div>
+            <div class="flex justify-between">
+                <span>• Penarikan Langsung Loket:</span>
+                <b class="text-emerald-700">Maks. Rp 1.000.000</b>
+            </div>
+            <div class="flex justify-between text-amber-800 font-medium">
+                <span>• Penarikan di atas Rp 1.000.000:</span>
+                <b>Wajib Janji H-1</b>
+            </div>
+        </div>
+
         <form onsubmit="submitWithdraw(event)" class="space-y-3 text-sm">
             <div>
-                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nominal Penarikan (Rp)</label>
-                <input type="text" inputmode="numeric" id="withdrawAmount" required placeholder="Contoh: 20.000" class="format-rupiah w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:outline-none font-bold text-lg text-rose-700">
+                <div class="flex justify-between items-center mb-1">
+                    <label class="block text-xs font-bold text-slate-700 uppercase">Nominal Penarikan (Rp) *</label>
+                    <span id="withdrawHintText" class="text-[11px] text-slate-500 font-medium">Maks. langsung: Rp 0</span>
+                </div>
+                <input type="text" inputmode="numeric" id="withdrawAmount" required oninput="handleWithdrawAmountInput(this.value)" placeholder="Contoh: 20.000" class="format-rupiah w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:outline-none font-bold text-lg text-rose-700">
             </div>
+
+            <!-- Warning Box Penarikan Dana Besar (> Rp 1.000.000) -->
+            <div id="largeWithdrawAlert" class="hidden p-3.5 bg-amber-50 border border-amber-300 rounded-2xl text-xs space-y-2.5">
+                <div class="flex items-center space-x-2 text-amber-900 font-bold">
+                    <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <span>Penarikan Dana Besar (> Rp 1.000.000)</span>
+                </div>
+                <p class="text-[11px] text-amber-800 leading-relaxed">
+                    Sesuai SOP, penarikan di atas Rp 1.000.000 <b>wajib melakukan perjanjian dengan pihak teller minimal 1 hari sebelum penarikan (H-1)</b>.
+                </p>
+
+                <!-- Status Perjanjian Sistem Terdeteksi -->
+                <div id="appointmentDetectedBox" class="hidden p-2.5 bg-emerald-100 border border-emerald-300 rounded-xl text-emerald-900 text-xs space-y-0.5">
+                    <div class="font-bold flex items-center space-x-1.5 text-emerald-800">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Perjanjian H-1 Terverifikasi!</span>
+                    </div>
+                    <p id="appointmentDetectedText" class="text-[11px] text-emerald-700 mt-0.5">-</p>
+                    <input type="hidden" id="verifiedAppointmentId" value="">
+                </div>
+
+                <!-- Konfirmasi Perjanjian Manual Oleh Teller -->
+                <div id="appointmentManualConfirmBox" class="space-y-2 pt-1 border-t border-amber-200">
+                    <label class="flex items-start space-x-2 cursor-pointer">
+                        <input type="checkbox" id="checkManualAppointment" onchange="toggleManualAppointmentDate()" class="mt-0.5 rounded text-amber-600 focus:ring-amber-500">
+                        <span class="text-[11px] text-amber-900 font-semibold leading-tight">
+                            Konfirmasi: Nasabah telah membuat perjanjian dengan teller minimal 1 hari sebelumnya (H-1)
+                        </span>
+                    </label>
+                    <div id="manualAppointmentDateField" class="hidden pl-5 space-y-1">
+                        <label class="block text-[10px] font-bold text-amber-800 uppercase">Tanggal Perjanjian Disepakati (Maks. Kemarin)</label>
+                        <input type="date" id="manualAppointmentDate" class="px-2.5 py-1.5 bg-white border border-amber-300 rounded-xl text-xs font-bold text-slate-700">
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <div class="flex items-center justify-between mb-1">
-                    <label class="block text-xs font-bold text-slate-600 uppercase">PIN Keamanan Nasabah (6-Digit)</label>
-                    <button type="button" onclick="promptResetPinInWithdraw()" class="text-[11px] font-bold text-amber-600 hover:text-amber-800 hover:underline flex items-center"> Lupa PIN Nasabah?
+                    <label class="block text-xs font-bold text-slate-700 uppercase">PIN Keamanan Nasabah (6-Digit) *</label>
+                    <button type="button" onclick="promptResetPinInWithdraw()" class="text-[11px] font-bold text-amber-600 hover:text-amber-800 hover:underline flex items-center">
+                        Lupa PIN Nasabah?
                     </button>
                 </div>
                 <input type="password" id="withdrawPin" required maxlength="6" minlength="6" placeholder="••••••" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:outline-none font-mono text-center tracking-widest text-lg font-bold">
             </div>
+
             <div>
-                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Keterangan (Opsional)</label>
-                <input type="text" id="withdrawDesc" placeholder="Penarikan uang saku" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Keterangan (Opsional)</label>
+                <input type="text" id="withdrawDesc" placeholder="Contoh: Penarikan uang saku / keperluan sekolah" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:outline-none text-xs">
             </div>
-            <div class="flex justify-end space-x-2 pt-3">
+
+            <div class="flex justify-end space-x-2 pt-3 border-t">
                 <button type="button" onclick="closeModal('modalWithdraw')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Batal</button>
                 <button type="submit" id="btnWithdrawSubmit" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow">Otorisasi & Tarik</button>
             </div>
@@ -574,6 +647,57 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Buat Perjanjian Penarikan Dana Besar (> Rp 1 Jt, Minimal H-1) -->
+<div id="modalWithdrawalAppointment" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b pb-3">
+            <div>
+                <h3 class="font-black text-slate-800 text-base flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span>Perjanjian Tarik Tunai Dana Besar</span>
+                </h3>
+                <p class="text-[11px] text-slate-500">Pendaftaran janji penarikan dana > Rp 1 Juta minimal 1 hari sebelumnya (H-1)</p>
+            </div>
+            <button type="button" onclick="closeModal('modalWithdrawalAppointment')" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <form id="formWithdrawalAppointment" onsubmit="submitWithdrawalAppointment(event)" class="space-y-3 text-sm">
+            <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-1">
+                <span class="text-[11px] text-indigo-700 font-bold uppercase block">Nasabah Terpilih:</span>
+                <p id="aptCustName" class="font-black text-slate-900 text-sm">-</p>
+                <div class="flex justify-between text-xs text-indigo-900 pt-1 border-t border-indigo-200">
+                    <span>Saldo Saat Ini: <b id="aptCustBalance">Rp 0</b></span>
+                    <span>Tersedia (Sisa 10k): <b id="aptCustAvailable" class="text-emerald-700">Rp 0</b></span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rencana Tanggal Penarikan *</label>
+                <input type="date" id="aptWithdrawalDate" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs font-bold bg-white text-slate-800">
+                <span class="text-[10px] text-slate-400 mt-1 block">Wajib minimal 1 hari ke depan (H-1 dari hari ini).</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nominal Rencana Penarikan (Rp) *</label>
+                <input type="text" inputmode="numeric" id="aptAmount" required placeholder="Contoh: 1.500.000" class="format-rupiah w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-bold text-lg text-indigo-700">
+                <span class="text-[10px] text-slate-400 mt-1 block">Khusus penarikan di atas Rp 1.000.000. Saldo mengendap Rp 10.000 tetap terjaga.</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Catatan Kebutuhan Nasabah (Opsional)</label>
+                <textarea id="aptNotes" rows="2" placeholder="Contoh: Kebutuhan biaya daftar ulang / studi tur / beli perlengkapan..." class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-xs"></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t">
+                <button type="button" onclick="closeModal('modalWithdrawalAppointment')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Batal</button>
+                <button type="submit" id="btnSubmitApt" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow flex items-center space-x-1.5">
+                    <span>Simpan Perjanjian H-1</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
@@ -632,6 +756,14 @@
             document.getElementById('custRekeningText').innerText = `No. Rek: ${activeCustomer.account_number}`;
             document.getElementById('custKelasText').innerText = `Kelas: ${activeCustomer.class_name} | NIS: ${activeCustomer.nis}`;
             document.getElementById('custSaldoText').innerText = `Rp ${Number(activeCustomer.balance).toLocaleString('id-ID')}`;
+            
+            const saldoBisaDitarik = Math.max(0, Number(activeCustomer.balance) - 10000);
+            const maxDirectTarik = Math.min(1000000, saldoBisaDitarik);
+            const ditarikEl = document.getElementById('custSaldoDitarikText');
+            if (ditarikEl) {
+                ditarikEl.innerHTML = `Bisa Ditarik: <b class="text-emerald-400">Rp ${maxDirectTarik.toLocaleString('id-ID')}</b>`;
+            }
+
             document.getElementById('activeCustomerCard').classList.remove('hidden');
         } else {
             document.getElementById('activeCustomerCard').classList.add('hidden');
@@ -731,10 +863,69 @@
             return;
         }
         if (!activeCustomer) return;
+
+        const balance = Number(activeCustomer.balance || 0);
+        const maxAvail = Math.max(0, balance - 10000);
+        const maxDirect = Math.min(1000000, maxAvail);
+
         document.getElementById('withdrawAmount').value = '';
         document.getElementById('withdrawPin').value = '';
         document.getElementById('withdrawDesc').value = '';
+
+        const hintEl = document.getElementById('withdrawHintText');
+        if (hintEl) {
+            hintEl.innerHTML = `Maks. langsung: <b class="text-rose-700">Rp ${maxDirect.toLocaleString('id-ID')}</b>`;
+        }
+
+        // Reset Box Alert Penarikan Dana Besar (> 1 Jt)
+        const alertBox = document.getElementById('largeWithdrawAlert');
+        if (alertBox) alertBox.classList.add('hidden');
+
+        const aptBox = document.getElementById('appointmentDetectedBox');
+        if (aptBox) aptBox.classList.add('hidden');
+
+        document.getElementById('verifiedAppointmentId').value = '';
+        document.getElementById('checkManualAppointment').checked = false;
+        document.getElementById('manualAppointmentDateField').classList.add('hidden');
+
+        // Set tanggal perjanjian default ke kemarin
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        const manualDateInput = document.getElementById('manualAppointmentDate');
+        if (manualDateInput) {
+            manualDateInput.value = yesterday;
+            manualDateInput.max = yesterday;
+        }
+
+        // Cek jika nasabah ini memiliki perjanjian aktif H-1
+        if (activeCustomer.has_active_appointment && activeCustomer.active_appointment) {
+            const apt = activeCustomer.active_appointment;
+            if (aptBox) aptBox.classList.remove('hidden');
+            document.getElementById('verifiedAppointmentId').value = apt.id;
+            document.getElementById('appointmentDetectedText').innerText = `Perjanjian ID #${apt.id} dibuat pada ${apt.appointment_date} untuk penarikan Rp ${Number(apt.amount).toLocaleString('id-ID')}.`;
+            document.getElementById('checkManualAppointment').checked = true;
+        }
+
         document.getElementById('modalWithdraw').classList.remove('hidden');
+    }
+
+    function handleWithdrawAmountInput(val) {
+        const raw = unformatRupiahNumber(val);
+        const alertBox = document.getElementById('largeWithdrawAlert');
+        if (!alertBox) return;
+
+        if (raw > 1000000) {
+            alertBox.classList.remove('hidden');
+        } else {
+            alertBox.classList.add('hidden');
+        }
+    }
+
+    function toggleManualAppointmentDate() {
+        const checked = document.getElementById('checkManualAppointment').checked;
+        const field = document.getElementById('manualAppointmentDateField');
+        if (field) {
+            field.classList.toggle('hidden', !checked);
+        }
     }
 
     // Revisi: Lupa PIN nasabah saat penarikan di Teller direset melalui kode OTP yang dikirimkan ke Gmail
@@ -905,12 +1096,78 @@
             return;
         }
 
+        const balance = Number(activeCustomer.balance || 0);
+        const maxAvail = Math.max(0, balance - 10000);
+        const maxDirect = Math.min(1000000, maxAvail);
+
+        // 1. Validasi saldo mengendap Rp 10.000
+        if (rawAmount > maxAvail) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Saldo Mengendap Tidak Terpenuhi',
+                html: `
+                    <div class="text-left text-xs space-y-2 p-2">
+                        <p>Penarikan ditolak karena sisa saldo setelah penarikan tidak boleh di bawah saldo mengendap minimum (<b>Rp 10.000</b>).</p>
+                        <div class="p-2.5 bg-slate-100 rounded-xl space-y-1">
+                            <div>Saldo Saat Ini: <b>Rp ${balance.toLocaleString('id-ID')}</b></div>
+                            <div>Saldo Mengendap Wajib: <b>Rp 10.000</b></div>
+                            <div class="text-rose-700 font-bold">Maksimal yang Bisa Ditarik: Rp ${maxAvail.toLocaleString('id-ID')}</div>
+                        </div>
+                    </div>
+                `,
+                confirmButtonColor: '#e11d48'
+            });
+            return;
+        }
+
+        // 2. Validasi penarikan > Rp 1.000.000 wajib perjanjian H-1
+        const verifiedAptId = document.getElementById('verifiedAppointmentId') ? document.getElementById('verifiedAppointmentId').value : '';
+        const manualConfirmed = document.getElementById('checkManualAppointment') ? document.getElementById('checkManualAppointment').checked : false;
+        const manualDate = document.getElementById('manualAppointmentDate') ? document.getElementById('manualAppointmentDate').value : '';
+
+        if (rawAmount > 1000000 && !verifiedAptId && !manualConfirmed) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Wajib Perjanjian H-1 (> Rp 1 Juta)',
+                html: `
+                    <div class="text-left text-xs space-y-2 p-2">
+                        <p>Penarikan dana sebesar <b class="text-rose-700">Rp ${rawAmount.toLocaleString('id-ID')}</b> berada di atas batas penarikan langsung loket (<b>Rp 1.000.000</b>).</p>
+                        <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1">
+                            <div><b>Ketentuan Bank Mini:</b></div>
+                            <div>Penarikan di atas Rp 1.000.000 wajib melakukan perjanjian dengan pihak teller minimal 1 hari sebelumnya (H-1) untuk persiapan fisik uang kas laci.</div>
+                        </div>
+                        <p class="text-slate-500">Maksimal penarikan langsung saat ini tanpa perjanjian adalah <b>Rp ${maxDirect.toLocaleString('id-ID')}</b>.</p>
+                    </div>
+                `,
+                confirmButtonColor: '#f59e0b',
+                confirmButtonText: 'Pahami Aturan'
+            });
+            return;
+        }
+
+        // Jika manual check tapi tanggal bukan H-1 (misal hari ini atau masa depan)
+        if (rawAmount > 1000000 && manualConfirmed && !verifiedAptId) {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            if (!manualDate || manualDate >= todayStr) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Tanggal Perjanjian Tidak Valid',
+                    text: 'Perjanjian penarikan dana besar wajib dilakukan minimal 1 hari sebelum penarikan (H-1 / maksimal kemarin).',
+                    confirmButtonColor: '#f59e0b'
+                });
+                return;
+            }
+        }
+
         const payload = {
             saver_id: activeCustomer.id,
             customer_id: activeCustomer.id,
             amount: rawAmount,
             security_pin: document.getElementById('withdrawPin').value,
-            description: document.getElementById('withdrawDesc').value
+            description: document.getElementById('withdrawDesc').value,
+            appointment_id: verifiedAptId || null,
+            appointment_confirmed: manualConfirmed,
+            appointment_date: manualDate || null
         };
 
         const res = await fetchAPI('/teller/transactions/withdraw', { method: 'POST', body: JSON.stringify(payload) });
@@ -940,6 +1197,97 @@
             } else {
                 Swal.fire('Penarikan Ditolak!', msg, 'error');
             }
+        }
+    }
+
+    // ================= JANJI PENARIKAN DANA BESAR (> RP 1 JT) =================
+    function openWithdrawalAppointmentModal() {
+        if (!activeCustomer) {
+            Swal.fire('Nasabah Belum Dipilih', 'Silakan cari atau scan nasabah terlebih dahulu.', 'warning');
+            return;
+        }
+
+        const balance = Number(activeCustomer.balance || 0);
+        const maxAvail = Math.max(0, balance - 10000);
+
+        if (maxAvail <= 1000000) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Saldo Belum Memenuhi Kriteria (> Rp 1 Jt)',
+                html: `
+                    <div class="text-left text-xs space-y-2 p-2">
+                        <p>Perjanjian H-1 khusus untuk penarikan dana di atas <b>Rp 1.000.000</b>.</p>
+                        <p>Saldo nasabah saat ini: <b>Rp ${balance.toLocaleString('id-ID')}</b> (tersedia: <b>Rp ${maxAvail.toLocaleString('id-ID')}</b>).</p>
+                        <p class="text-emerald-700 font-bold">Nasabah ini dapat langsung melakukan penarikan reguler di loket tanpa perlu perjanjian H-1.</p>
+                    </div>
+                `,
+                confirmButtonColor: '#4f46e5'
+            });
+            return;
+        }
+
+        document.getElementById('aptCustName').innerText = `${activeCustomer.name} (${activeCustomer.account_number})`;
+        document.getElementById('aptCustBalance').innerText = `Rp ${balance.toLocaleString('id-ID')}`;
+        document.getElementById('aptCustAvailable').innerText = `Rp ${maxAvail.toLocaleString('id-ID')}`;
+        document.getElementById('aptAmount').value = '';
+        document.getElementById('aptNotes').value = '';
+
+        // Tanggal minimal besok (H+1)
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+        const dateInput = document.getElementById('aptWithdrawalDate');
+        if (dateInput) {
+            dateInput.value = tomorrow;
+            dateInput.min = tomorrow;
+        }
+
+        document.getElementById('modalWithdrawalAppointment').classList.remove('hidden');
+    }
+
+    async function submitWithdrawalAppointment(e) {
+        e.preventDefault();
+        const rawAmount = unformatRupiahNumber(document.getElementById('aptAmount').value);
+        if (!rawAmount || rawAmount <= 1000000) {
+            Swal.fire('Nominal Kurang', 'Perjanjian penarikan H-1 khusus untuk nominal di atas Rp 1.000.000! Untuk penarikan <= Rp 1 Jt dapat langsung ditarik di loket.', 'warning');
+            return;
+        }
+
+        const balance = Number(activeCustomer.balance || 0);
+        const maxAvail = Math.max(0, balance - 10000);
+        if (rawAmount > maxAvail) {
+            Swal.fire('Melebihi Saldo', `Nominal penarikan melebihi batas saldo tersedia (Rp ${maxAvail.toLocaleString('id-ID')}) dengan memperhitungkan saldo mengendap Rp 10.000.`, 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitApt');
+        btn.disabled = true;
+        btn.innerHTML = '<span>Menyimpan...</span>';
+
+        const payload = {
+            saver_id: activeCustomer.id,
+            amount: rawAmount,
+            withdrawal_date: document.getElementById('aptWithdrawalDate').value,
+            notes: document.getElementById('aptNotes').value.trim()
+        };
+
+        const res = await fetchAPI('/teller/withdrawal-appointments', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        btn.disabled = false;
+        btn.innerHTML = '<span>Simpan Perjanjian H-1</span>';
+
+        if (res && res.data && res.data.success) {
+            closeModal('modalWithdrawalAppointment');
+            Swal.fire({
+                icon: 'success',
+                title: 'Perjanjian Berhasil Dicatat!',
+                text: res.data.message,
+                confirmButtonColor: '#10b981'
+            });
+            searchCustomer(activeCustomer.account_number);
+        } else {
+            Swal.fire('Gagal Mencatat Perjanjian', (res && res.data && res.data.message) || 'Terjadi kesalahan sistem.', 'error');
         }
     }
 
@@ -1667,7 +2015,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        ['activateAmountInput', 'depositAmount', 'withdrawAmount', 'clPhysicalInput', 'actTellerInitialDeposit', 'advAmount'].forEach(id => {
+        ['activateAmountInput', 'depositAmount', 'withdrawAmount', 'clPhysicalInput', 'actTellerInitialDeposit', 'advAmount', 'aptAmount'].forEach(id => {
             attachRupiahMask(document.getElementById(id));
         });
         loadTodayTransactions();
