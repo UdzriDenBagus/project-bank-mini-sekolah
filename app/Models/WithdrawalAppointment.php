@@ -32,3 +32,4 @@ class WithdrawalAppointment extends Model
         return $this->belongsTo(User::class, 'teller_id');
     }
 }
+

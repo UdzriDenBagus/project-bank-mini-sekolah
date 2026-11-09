@@ -124,11 +124,26 @@ class AuthController extends Controller
                 // Kredensial benar, bersihkan percobaan
                 RateLimiter::clear($throttleKey);
 
-                // Akses Web Desktop khusus Petugas Bank. Nasabah hanya boleh via Mobile App (Flutter).
+                $tokenTarget = $saver ?: $member;
+                $token = $tokenTarget->createToken('auth_token_customer', ['customer'])->plainTextToken;
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Akun Nasabah Siswa hanya dapat diakses melalui Aplikasi Mobile (Flutter). Portal Web Desktop ini khusus untuk Petugas (Administrator & Teller).'
-                ], 403);
+                    'success' => true,
+                    'message' => 'Login Nasabah [' . $member->name . '] Berhasil!',
+                    'data'    => [
+                        'role'       => 'customer',
+                        'redirect'   => '/customer/portal',
+                        'token'      => $token,
+                        'token_type' => 'Bearer',
+                        'user'       => [
+                            'id'             => $saver ? $saver->id : $member->id,
+                            'name'           => $member->name,
+                            'account_number' => $saver ? $saver->account_number : null,
+                            'nis'            => $member->nis,
+                            'role'           => 'customer',
+                        ]
+                    ]
+                ], 200);
             }
         }
 

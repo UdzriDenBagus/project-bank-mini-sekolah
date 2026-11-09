@@ -288,6 +288,11 @@ class TellerController extends Controller
                 ->orderBy('id', 'desc')
                 ->first();
 
+            $pendingApt = WithdrawalAppointment::where('saver_id', $saver->id)
+                ->where('status', 'pending')
+                ->orderBy('id', 'desc')
+                ->first();
+
             return response()->json([
                 'success' => true,
                 'data'    => [
@@ -302,6 +307,8 @@ class TellerController extends Controller
                     'max_direct_withdrawal'  => $maxDirect,
                     'has_active_appointment' => !is_null($activeH1),
                     'active_appointment'     => $activeH1,
+                    'has_pending_appointment'=> !is_null($pendingApt),
+                    'pending_appointment'    => $pendingApt,
                     'status'                 => $saver->status,
                     'email'                  => ($saver->member && $saver->member->email) ? $saver->member->email : null,
                 ]
@@ -673,6 +680,11 @@ class TellerController extends Controller
                 'position'       => 'credit',
                 'amount'         => $amount,
             ]);
+
+            // Jika penarikan menggunakan perjanjian (appointment), ubah status menjadi completed
+            if (isset($appointment) && $appointment && $appointment->status !== 'completed') {
+                $appointment->update(['status' => 'completed']);
+            }
 
             DB::commit();
 
@@ -1084,28 +1096,37 @@ class TellerController extends Controller
     public function getWithdrawalAppointments(Request $request)
     {
         $saverId = $request->saver_id ?? $request->customer_id;
-        if (!$saverId) {
-            return response()->json(['success' => false, 'message' => 'ID Nasabah diperlukan.'], 422);
+
+        $query = WithdrawalAppointment::with(['saver', 'teller']);
+        if ($saverId) {
+            $query->where('saver_id', $saverId);
         }
 
-        $appointments = WithdrawalAppointment::with(['teller'])
-            ->where('saver_id', $saverId)
-            ->orderBy('id', 'desc')
-            ->get();
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
 
-        $activeH1 = $appointments->first(function ($apt) {
+        $appointments = $query->orderByRaw("CASE WHEN status = 'pending' THEN 1 WHEN status = 'approved' THEN 2 ELSE 3 END")
+                              ->orderBy('withdrawal_date', 'asc')
+                              ->orderBy('id', 'desc')
+                              ->get();
+
+        $activeH1 = $saverId ? $appointments->first(function ($apt) {
             return $apt->status === 'approved' && Carbon::parse($apt->appointment_date)->startOfDay()->lte(today()->subDay()->endOfDay());
-        });
+        }) : null;
+
+        $pendingCount = WithdrawalAppointment::where('status', 'pending')->count();
 
         return response()->json([
-            'success'   => true,
-            'data'      => $appointments,
-            'active_h1' => $activeH1,
+            'success'       => true,
+            'data'          => $appointments,
+            'active_h1'     => $activeH1,
+            'pending_count' => $pendingCount,
         ]);
     }
 
     /**
-     * 15. Buat Perjanjian Penarikan Dana Besar (> Rp 1.000.000, Minimal H-1)
+     * 15. Buat Perjanjian Penarikan Dana Besar (> Rp 1.000.000, Minimal H-1) oleh Teller
      */
     public function createWithdrawalAppointment(Request $request)
     {
@@ -1147,6 +1168,62 @@ class TellerController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Perjanjian penarikan dana besar sebesar Rp ' . number_format($request->amount, 0, ',', '.') . ' untuk tanggal ' . Carbon::parse($request->withdrawal_date)->translatedFormat('d F Y') . ' berhasil dicatat!',
+            'data'    => $appointment,
+        ]);
+    }
+
+    /**
+     * 16. ACC / Setujui Perjanjian Penarikan Dana Nasabah oleh Teller
+     */
+    public function approveWithdrawalAppointment(Request $request, $id)
+    {
+        $appointment = WithdrawalAppointment::with('saver')->findOrFail($id);
+
+        if ($appointment->status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perjanjian ini sudah selesai dicairkan sebelumnya.'
+            ], 422);
+        }
+
+        $appointment->update([
+            'status'    => 'approved',
+            'teller_id' => $request->user()->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Perjanjian penarikan nasabah [' . $appointment->saver->name . '] sebesar Rp ' . number_format($appointment->amount, 0, ',', '.') . ' BERHASIL DI-ACC (Disetujui)! Status di akun nasabah kini berubah menjadi Di-ACC.',
+            'data'    => $appointment,
+        ]);
+    }
+
+    /**
+     * 17. Tolak Perjanjian Penarikan Dana Nasabah oleh Teller
+     */
+    public function rejectWithdrawalAppointment(Request $request, $id)
+    {
+        $appointment = WithdrawalAppointment::with('saver')->findOrFail($id);
+
+        if ($appointment->status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perjanjian ini sudah selesai dicairkan dan tidak dapat ditolak.'
+            ], 422);
+        }
+
+        $reason = $request->reason ? trim($request->reason) : 'Ditolak oleh Petugas Teller';
+        $notes = $appointment->notes ? ($appointment->notes . ' | Alasan Ditolak: ' . $reason) : ('Alasan Ditolak: ' . $reason);
+
+        $appointment->update([
+            'status'    => 'rejected',
+            'teller_id' => $request->user()->id,
+            'notes'     => $notes,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Perjanjian penarikan nasabah [' . $appointment->saver->name . '] berhasil ditolak.',
             'data'    => $appointment,
         ]);
     }

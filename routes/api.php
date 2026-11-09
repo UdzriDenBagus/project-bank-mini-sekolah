@@ -138,6 +138,8 @@ Route::middleware(['auth:sanctum', 'role:teller'])->prefix('teller')->group(func
     // Perjanjian Penarikan Dana Besar (> Rp 1.000.000, Wajib Minimal H-1)
     Route::get('/withdrawal-appointments', [TellerController::class, 'getWithdrawalAppointments']);
     Route::post('/withdrawal-appointments', [TellerController::class, 'createWithdrawalAppointment']);
+    Route::post('/withdrawal-appointments/{id}/approve', [TellerController::class, 'approveWithdrawalAppointment']);
+    Route::post('/withdrawal-appointments/{id}/reject', [TellerController::class, 'rejectWithdrawalAppointment']);
 
     // Status Operasional Pelayanan Loket Teller (Buka, Istirahat, Tutup)
     Route::post('/service-status', [TellerController::class, 'updateServiceStatus']);
@@ -148,6 +150,11 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::get('/balance', [CustomerPortalController::class, 'getBalance']);
     Route::get('/mutations', [CustomerPortalController::class, 'getMutations']);
     Route::post('/email', [CustomerPortalController::class, 'updateEmail']);
+
+    // Perjanjian Penarikan Dana Mandiri oleh Nasabah (> Rp 1.000.000, Wajib Minimal H-1)
+    Route::get('/withdrawal-appointments', [CustomerPortalController::class, 'getAppointments']);
+    Route::post('/withdrawal-appointments', [CustomerPortalController::class, 'createAppointment']);
+    Route::delete('/withdrawal-appointments/{id}', [CustomerPortalController::class, 'cancelAppointment']);
 });
 
 // ==========================================

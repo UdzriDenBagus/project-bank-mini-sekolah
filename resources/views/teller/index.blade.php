@@ -107,6 +107,16 @@
                 </div>
             </div>
 
+            <!-- Alert Khusus Janji Penarikan Nasabah (Jika Ada yang Aktif atau Pending) -->
+            <div id="custAppointmentAlert" class="hidden p-3 rounded-2xl text-xs space-y-1.5 border">
+                <div class="flex items-center justify-between">
+                    <span id="custAppointmentBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase">JANJI TARIK</span>
+                    <span id="custAppointmentAmount" class="font-black text-xs">Rp 0</span>
+                </div>
+                <p id="custAppointmentDesc" class="text-[11px] leading-relaxed"></p>
+                <div id="custAppointmentAction" class="pt-1 flex justify-end"></div>
+            </div>
+
             <!-- Tombol Transaksi Setor & Tarik -->
             <div class="space-y-2 pt-2">
                 <div class="grid grid-cols-2 gap-3">
@@ -142,7 +152,12 @@
                     </div>
                     <h4 class="text-xs text-slate-400 mt-0.5">Saldo uang fisik di tangan Anda untuk melayani setoran & penarikan</h4>
                 </div>
-                <div class="flex items-center space-x-2 self-start sm:self-auto">
+                <div class="flex items-center space-x-2 self-start sm:self-auto flex-wrap gap-y-2">
+                    <button onclick="openAppointmentsReviewModal()" id="btnReviewAppointments" class="relative px-3.5 py-2 bg-indigo-600/80 hover:bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center space-x-1.5 border border-indigo-400/40" title="Tinjau & ACC Perjanjian Penarikan Dana Besar Nasabah">
+                        <svg class="w-3.5 h-3.5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        <span>Otorisasi Janji Tarik</span>
+                        <span id="badgePendingApt" class="hidden px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">0</span>
+                    </button>
                     <button onclick="openCashAdvanceHistoryModal()" id="btnAdvanceHistory" class="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs shadow-sm transition flex items-center space-x-1.5 border border-white/20" title="Lihat riwayat permohonan modal awal & top up kas Anda">
                         <svg class="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span>Riwayat Modal</span>
@@ -698,6 +713,53 @@
         </form>
     </div>
 </div>
+
+<!-- Modal Otorisasi & Review Perjanjian Penarikan Dana (> Rp 1.000.000) -->
+<div id="modalAppointmentsReview" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b pb-3">
+            <div>
+                <h3 class="font-black text-slate-800 text-lg flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    <span>Otorisasi Janji Tarik Tunai (> Rp 1.000.000)</span>
+                </h3>
+                <p class="text-xs text-slate-500">Tinjau dan berikan ACC / Tolak atas pengajuan perjanjian penarikan dana nasabah</p>
+            </div>
+            <button type="button" onclick="closeModal('modalAppointmentsReview')" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1">✕</button>
+        </div>
+
+        <!-- Filter Status Buttons -->
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-bold text-slate-600">
+                <button type="button" onclick="filterAppointmentsReview('pending')" id="tabAptPending" class="px-3 py-1.5 rounded-lg bg-white shadow-xs text-indigo-700 font-bold">Menunggu ACC</button>
+                <button type="button" onclick="filterAppointmentsReview('approved')" id="tabAptApproved" class="px-3 py-1.5 rounded-lg text-slate-600">Di-ACC</button>
+                <button type="button" onclick="filterAppointmentsReview('all')" id="tabAptAll" class="px-3 py-1.5 rounded-lg text-slate-600">Semua</button>
+            </div>
+            <button type="button" onclick="loadAppointmentsReview()" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition flex items-center space-x-1">
+                <span>Segarkan Data</span>
+            </button>
+        </div>
+
+        <!-- Tabel Perjanjian -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-100">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100">
+                    <tr>
+                        <th class="p-3">Nasabah</th>
+                        <th class="p-3">Saldo Tabungan</th>
+                        <th class="p-3">Nominal Tarik</th>
+                        <th class="p-3">Rencana Penarikan</th>
+                        <th class="p-3">Status</th>
+                        <th class="p-3 text-center">Aksi / Otorisasi</th>
+                    </tr>
+                </thead>
+                <tbody id="tblAppointmentsReviewBody" class="divide-y divide-slate-100 text-slate-700">
+                    <tr><td colspan="6" class="p-6 text-center text-slate-400">Memuat data permohonan...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
@@ -762,6 +824,41 @@
             const ditarikEl = document.getElementById('custSaldoDitarikText');
             if (ditarikEl) {
                 ditarikEl.innerHTML = `Bisa Ditarik: <b class="text-emerald-400">Rp ${maxDirectTarik.toLocaleString('id-ID')}</b>`;
+            }
+
+            // Update Alert Janji Penarikan Nasabah
+            const aptAlert = document.getElementById('custAppointmentAlert');
+            const aptBadge = document.getElementById('custAppointmentBadge');
+            const aptAmount = document.getElementById('custAppointmentAmount');
+            const aptDesc = document.getElementById('custAppointmentDesc');
+            const aptAction = document.getElementById('custAppointmentAction');
+
+            if (aptAlert) {
+                if (activeCustomer.active_appointment) {
+                    const apt = activeCustomer.active_appointment;
+                    aptAlert.className = 'p-3 rounded-2xl text-xs space-y-1.5 border bg-emerald-50 border-emerald-300 text-emerald-950 block';
+                    aptBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-200 text-emerald-800';
+                    aptBadge.innerText = 'DI-ACC • SIAP DITARIK';
+                    aptAmount.className = 'font-black text-xs text-emerald-700';
+                    aptAmount.innerText = `Rp ${Number(apt.amount).toLocaleString('id-ID')}`;
+                    aptDesc.innerHTML = `Perjanjian penarikan dana sebesar <b>Rp ${Number(apt.amount).toLocaleString('id-ID')}</b> telah <b>DI-ACC</b> untuk tanggal <b>${apt.withdrawal_date}</b>. Penarikan dana besar dapat diproses hari ini!`;
+                    aptAction.innerHTML = '';
+                } else if (activeCustomer.has_pending_appointment && activeCustomer.pending_appointment) {
+                    const apt = activeCustomer.pending_appointment;
+                    aptAlert.className = 'p-3 rounded-2xl text-xs space-y-1.5 border bg-amber-50 border-amber-300 text-amber-950 block';
+                    aptBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-200 text-amber-800';
+                    aptBadge.innerText = 'MENUNGGU ACC TELLER';
+                    aptAmount.className = 'font-black text-xs text-amber-700';
+                    aptAmount.innerText = `Rp ${Number(apt.amount).toLocaleString('id-ID')}`;
+                    aptDesc.innerHTML = `Nasabah mengajukan janji penarikan dana sebesar <b>Rp ${Number(apt.amount).toLocaleString('id-ID')}</b> untuk tanggal <b>${apt.withdrawal_date}</b> via akun nasabah.`;
+                    aptAction.innerHTML = `
+                        <button type="button" onclick="approveAppointment(${apt.id}, '${escapeHtml(activeCustomer.name)}', ${apt.amount})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition">
+                            ✓ ACC Sekarang
+                        </button>
+                    `;
+                } else {
+                    aptAlert.className = 'hidden';
+                }
             }
 
             document.getElementById('activeCustomerCard').classList.remove('hidden');
@@ -1288,6 +1385,190 @@
             searchCustomer(activeCustomer.account_number);
         } else {
             Swal.fire('Gagal Mencatat Perjanjian', (res && res.data && res.data.message) || 'Terjadi kesalahan sistem.', 'error');
+        }
+    }
+
+    // ================= OTORISASI PERJANJIAN PENARIKAN (> 1 JT) =================
+    let currentAptFilter = 'pending';
+
+    async function openAppointmentsReviewModal() {
+        document.getElementById('modalAppointmentsReview').classList.remove('hidden');
+        loadAppointmentsReview();
+    }
+
+    function filterAppointmentsReview(status) {
+        currentAptFilter = status;
+        const btnPending = document.getElementById('tabAptPending');
+        const btnApproved = document.getElementById('tabAptApproved');
+        const btnAll = document.getElementById('tabAptAll');
+
+        if (btnPending) btnPending.className = 'px-3 py-1.5 rounded-lg text-slate-600';
+        if (btnApproved) btnApproved.className = 'px-3 py-1.5 rounded-lg text-slate-600';
+        if (btnAll) btnAll.className = 'px-3 py-1.5 rounded-lg text-slate-600';
+
+        if (status === 'pending' && btnPending) {
+            btnPending.className = 'px-3 py-1.5 rounded-lg bg-white shadow-xs text-indigo-700 font-bold';
+        } else if (status === 'approved' && btnApproved) {
+            btnApproved.className = 'px-3 py-1.5 rounded-lg bg-white shadow-xs text-emerald-700 font-bold';
+        } else if (btnAll) {
+            btnAll.className = 'px-3 py-1.5 rounded-lg bg-white shadow-xs text-indigo-700 font-bold';
+        }
+
+        loadAppointmentsReview();
+    }
+
+    async function loadPendingAppointmentsBadge() {
+        try {
+            const res = await fetchAPI('/teller/withdrawal-appointments?status=pending');
+            if (res && res.data && res.data.success) {
+                const count = res.data.pending_count !== undefined ? res.data.pending_count : (res.data.data ? res.data.data.length : 0);
+                const badge = document.getElementById('badgePendingApt');
+                if (badge) {
+                    if (count > 0) {
+                        badge.innerText = `${count}`;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+            }
+        } catch(e) {
+            console.error('Error loadPendingAppointmentsBadge:', e);
+        }
+    }
+
+    async function loadAppointmentsReview() {
+        const tbody = document.getElementById('tblAppointmentsReviewBody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Memuat data permohonan...</td></tr>';
+
+        try {
+            const res = await fetchAPI(`/teller/withdrawal-appointments?status=${currentAptFilter}`);
+            if (res && res.data && res.data.success) {
+                const list = res.data.data || [];
+                loadPendingAppointmentsBadge();
+
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Tidak ada pengajuan perjanjian dengan status ini.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = list.map(apt => {
+                    const saver = apt.saver || {};
+                    const balance = Number(saver.balance || 0);
+                    const isPending = apt.status === 'pending';
+                    const isApproved = apt.status === 'approved';
+
+                    let badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">Menunggu ACC</span>';
+                    if (isApproved) {
+                        badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">Di-ACC</span>';
+                    } else if (apt.status === 'rejected') {
+                        badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300">Ditolak</span>';
+                    } else if (apt.status === 'completed') {
+                        badge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-800 border border-blue-300">Selesai Dicairkan</span>';
+                    }
+
+                    let actions = '-';
+                    const safeName = (saver.name || '').replace(/'/g, "\\'");
+                    if (isPending) {
+                        actions = `
+                            <div class="flex items-center justify-center space-x-1.5">
+                                <button onclick="approveAppointment(${apt.id}, '${safeName}', ${apt.amount})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition">
+                                    ✓ ACC
+                                </button>
+                                <button onclick="rejectAppointment(${apt.id}, '${safeName}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-xs transition">
+                                    ✕ Tolak
+                                </button>
+                            </div>
+                        `;
+                    } else if (isApproved) {
+                        actions = `<span class="text-xs font-bold text-emerald-700">Telah Di-ACC</span>`;
+                    }
+
+                    return `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3">
+                                <div class="font-bold text-slate-900">${saver.name || '-'}</div>
+                                <div class="text-[11px] text-slate-500 font-mono">No. Rek: ${saver.account_number || '-'} • NIS: ${saver.nis || '-'}</div>
+                            </td>
+                            <td class="p-3 font-semibold text-slate-800">Rp ${balance.toLocaleString('id-ID')}</td>
+                            <td class="p-3 font-black text-rose-600">Rp ${Number(apt.amount).toLocaleString('id-ID')}</td>
+                            <td class="p-3 font-bold text-indigo-700">${apt.withdrawal_date}</td>
+                            <td class="p-3">${badge}</td>
+                            <td class="p-3 text-center">${actions}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-rose-500">Gagal memuat: ${e.message}</td></tr>`;
+        }
+    }
+
+    async function approveAppointment(id, name, amount) {
+        const confirm = await Swal.fire({
+            title: 'ACC Perjanjian Penarikan?',
+            html: `Apakah Anda yakin ingin menyetujui (ACC) pengajuan penarikan dana nasabah <b>${name}</b> sebesar <b>Rp ${Number(amount).toLocaleString('id-ID')}</b>?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, ACC Sekarang',
+            cancelButtonText: 'Batal'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        try {
+            const res = await fetchAPI(`/teller/withdrawal-appointments/${id}/approve`, { method: 'POST' });
+            if (res && res.data && res.data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Di-ACC!',
+                    text: res.data.message,
+                    confirmButtonColor: '#10b981'
+                });
+                loadAppointmentsReview();
+                loadPendingAppointmentsBadge();
+                if (activeCustomer) searchCustomer(activeCustomer.account_number);
+            } else {
+                Swal.fire('Gagal ACC', (res && res.data && res.data.message) || 'Terjadi kesalahan sistem.', 'error');
+            }
+        } catch(e) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    }
+
+    async function rejectAppointment(id, name) {
+        const { value: reason } = await Swal.fire({
+            title: 'Tolak Perjanjian Penarikan',
+            input: 'text',
+            inputLabel: `Alasan Penolakan untuk Nasabah ${name}:`,
+            inputPlaceholder: 'Misal: Saldo tidak mencukupi / salah tanggal...',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Tolak Pengajuan',
+            cancelButtonText: 'Batal'
+        });
+
+        if (reason === undefined) return;
+
+        try {
+            const res = await fetchAPI(`/teller/withdrawal-appointments/${id}/reject`, {
+                method: 'POST',
+                body: JSON.stringify({ reason: reason || 'Ditolak oleh Petugas Teller' })
+            });
+            if (res && res.data && res.data.success) {
+                Swal.fire('Ditolak', res.data.message, 'success');
+                loadAppointmentsReview();
+                loadPendingAppointmentsBadge();
+                if (activeCustomer) searchCustomer(activeCustomer.account_number);
+            } else {
+                Swal.fire('Gagal Menolak', (res && res.data && res.data.message) || 'Terjadi kesalahan.', 'error');
+            }
+        } catch(e) {
+            Swal.fire('Error', e.message, 'error');
         }
     }
 
@@ -2021,6 +2302,7 @@
         loadTodayTransactions();
         loadTellerCashBalance();
         loadTellerServiceStatus();
+        loadPendingAppointmentsBadge();
     });
 </script>
 @endsection

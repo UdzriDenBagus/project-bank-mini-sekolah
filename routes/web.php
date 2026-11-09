@@ -45,9 +45,9 @@ Route::get('/reports/closing/{id}/print', function ($id) {
     return view('reports.closing_print', ['closingId' => $id]);
 });
 
-// 7. Akses Nasabah Hanya Melalui Aplikasi Mobile (Halaman Desktop Dinonaktifkan)
+// 7. Modul Portal Nasabah Siswa (Buku Tabungan, Mutasi & Janji Tarik Tunai)
 Route::get('/customer/portal', function () {
-    return redirect('/login');
+    return view('customer.portal');
 });
 
 // 8. Unduh Berkas Template Excel Anggota (Direct Download)
