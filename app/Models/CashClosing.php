@@ -16,21 +16,21 @@ class CashClosing extends Model
         'physical_balance',
         'difference',
         'status',
-        'supervisor_id',
+        'approved_by',
         'approved_at',
         'notes',
         'rejection_reason',
     ];
 
     protected $casts = [
-        'closing_date' => 'date',
+        'closing_date'    => 'date',
         'opening_balance' => 'integer',
-        'total_deposit' => 'integer',
-        'total_withdraw' => 'integer',
-        'system_balance' => 'integer',
-        'physical_balance' => 'integer',
-        'difference' => 'integer',
-        'approved_at' => 'datetime',
+        'total_deposit'   => 'integer',
+        'total_withdraw'  => 'integer',
+        'system_balance'  => 'integer',
+        'physical_balance'=> 'integer',
+        'difference'      => 'integer',
+        'approved_at'     => 'datetime',
     ];
 
     public function teller()
@@ -38,8 +38,8 @@ class CashClosing extends Model
         return $this->belongsTo(User::class, 'teller_id');
     }
 
-    public function supervisor()
+    public function approvedBy()
     {
-        return $this->belongsTo(User::class, 'supervisor_id');
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

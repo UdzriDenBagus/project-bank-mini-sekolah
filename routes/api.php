@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminController;
-use App\Http\Controllers\Api\SupervisorController;
 use App\Http\Controllers\Api\TellerController;
 use App\Http\Controllers\Api\CustomerPortalController;
 
@@ -82,30 +81,18 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::post('/password-requests/{id}/direct-reset', [AdminController::class, 'directResetPasswordRequest']);
     Route::delete('/password-requests/{id}', [AdminController::class, 'destroyPasswordRequest']);
 
-    // 5. Fitur Otorisasi Closing Kas (Revisi 1: Tombol Ditolak dengan alasan mandiri & Accept All)
-    Route::get('/closings', [SupervisorController::class, 'indexClosings']);
-    Route::get('/closings/{id}/audit', [SupervisorController::class, 'auditTellerDetail']);
-    Route::post('/closings/approve-all', [SupervisorController::class, 'approveAllClosings']);
-    Route::post('/closings/{id}/approve', [SupervisorController::class, 'approveClosing']);
-    Route::post('/closings/{id}/reject', [SupervisorController::class, 'rejectClosing']);
+    // 5. Fitur Otorisasi Closing Kas
+    Route::get('/closings', [AdminController::class, 'indexClosings']);
+    Route::get('/closings/{id}/audit', [AdminController::class, 'auditTellerDetail']);
+    Route::post('/closings/approve-all', [AdminController::class, 'approveAllClosings']);
+    Route::post('/closings/{id}/approve', [AdminController::class, 'approveClosing']);
+    Route::post('/closings/{id}/reject', [AdminController::class, 'rejectClosing']);
 
     // 6. Laporan Bulanan & Audit Jurnal
     Route::get('/reports/monthly', [AdminController::class, 'monthlyReport']);
     Route::get('/audit-journals', [AdminController::class, 'auditJournals']);
 
     // 7. Otorisasi Modal Awal & Top Up Kas Loket Teller
-    Route::get('/cash-advances', [AdminController::class, 'indexCashAdvances']);
-    Route::post('/cash-advances/{id}/approve', [AdminController::class, 'approveCashAdvance']);
-    Route::post('/cash-advances/{id}/reject', [AdminController::class, 'rejectCashAdvance']);
-});
-
-// Area Supervisor (Kompatibilitas Dialihkan ke Admin)
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('supervisor')->group(function () {
-    Route::get('/closings', [SupervisorController::class, 'indexClosings']);
-    Route::get('/closings/{id}/audit', [SupervisorController::class, 'auditTellerDetail']);
-    Route::post('/closings/approve-all', [SupervisorController::class, 'approveAllClosings']);
-    Route::post('/closings/{id}/approve', [SupervisorController::class, 'approveClosing']);
-    Route::post('/closings/{id}/reject', [SupervisorController::class, 'rejectClosing']);
     Route::get('/cash-advances', [AdminController::class, 'indexCashAdvances']);
     Route::post('/cash-advances/{id}/approve', [AdminController::class, 'approveCashAdvance']);
     Route::post('/cash-advances/{id}/reject', [AdminController::class, 'rejectCashAdvance']);
@@ -180,12 +167,11 @@ Route::get('deploy-migrate-{secret}', function (Request $request, $secret) {
             $seedOutput = trim(Artisan::output());
         }
 
-        // Hapus akun atau peran supervisor lama jika masih tersisa
+        // Hapus akun dengan role supervisor lama jika masih tersisa di database
         try {
-            \Illuminate\Support\Facades\DB::table('cash_closings')->where('supervisor_id', 3)->update(['supervisor_id' => 1]);
             \Illuminate\Support\Facades\DB::table('users')->where('username', 'supervisor')->orWhere('role', 'supervisor')->delete();
         } catch (\Throwable $e) {
-            Log::warning('Cleanup supervisor: ' . $e->getMessage());
+            Log::warning('Cleanup sisa akun supervisor lama: ' . $e->getMessage());
         }
 
         // 3. Sambungkan symlink storage publik
@@ -311,9 +297,8 @@ Route::post('/deploy/sync-data', function (Request $request) {
 
     \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
 
-    // Hapus sisa akun supervisor jika terbawa
+    // Hapus sisa akun dengan role supervisor lama jika terbawa saat sinkronisasi data
     try {
-        \Illuminate\Support\Facades\DB::table('cash_closings')->where('supervisor_id', 3)->update(['supervisor_id' => 1]);
         \Illuminate\Support\Facades\DB::table('users')->where('username', 'supervisor')->orWhere('role', 'supervisor')->delete();
     } catch (\Throwable $e) {}
 

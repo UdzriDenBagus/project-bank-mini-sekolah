@@ -30,10 +30,7 @@ Route::get('/admin/dashboard', function () {
     return view('admin.index');
 });
 
-// 4. Modul Panel Supervisor dialihkan ke Panel Administrator
-Route::get('/supervisor/dashboard', function () {
-    return redirect('/admin/dashboard');
-});
+// 4. (Nomor dilestarikan untuk kompatibilitas urutan)
 
 // 5. Rute Tampilan Cetak Laporan Bulanan (Opsi A: Browser Print / PDF)
 Route::get('/reports/monthly/print', function () {

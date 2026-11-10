@@ -792,7 +792,7 @@ class TellerController extends Controller
                                                  ->sum('amount');
         $systemBalance = $openingBalance + (int) $totalDeposit - (int) $totalWithdraw;
 
-        $existingClosing = CashClosing::with(['supervisor'])
+        $existingClosing = CashClosing::with(['approvedBy'])
                                       ->where('teller_id', $tellerId)
                                       ->whereDate('closing_date', $today)
                                       ->first();

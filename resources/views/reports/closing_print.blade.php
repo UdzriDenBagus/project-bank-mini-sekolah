@@ -89,7 +89,7 @@
 
         async function loadAudit() {
             const token = localStorage.getItem('bank_token') || localStorage.getItem('auth_token');
-            const res = await fetch(`/api/supervisor/closings/${closingId}/audit`, {
+            const res = await fetch(`/api/admin/closings/${closingId}/audit`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
@@ -104,7 +104,7 @@
                 document.getElementById('sigTeller').innerText = c.teller ? c.teller.name : 'Teller';
                 document.getElementById('lblDate').innerText = c.closing_date;
                 document.getElementById('lblStatus').innerText = c.status;
-                document.getElementById('sigSpv').innerText = c.supervisor ? c.supervisor.name : 'Administrator';
+                document.getElementById('sigSpv').innerText = c.approved_by ? c.approved_by.name : 'Administrator';
 
                 const tbody = document.getElementById('txBody');
                 if (txs.length === 0) {

@@ -1340,7 +1340,7 @@
         document.getElementById('editUserUsername').value = u.username;
         document.getElementById('editUserEmail').value = u.email || '';
         document.getElementById('editUserPassword').value = '';
-        document.getElementById('editUserRole').value = u.role === 'supervisor' ? 'admin' : u.role;
+        document.getElementById('editUserRole').value = u.role;
         document.getElementById('editUserStatus').value = u.status;
         document.getElementById('modalEditUser').classList.remove('hidden');
     }
