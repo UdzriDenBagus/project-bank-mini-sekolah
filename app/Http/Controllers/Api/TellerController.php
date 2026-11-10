@@ -362,11 +362,28 @@ class TellerController extends Controller
     /**
      * 6. Eksekusi Setor Tunai (Deposit)
      */
+    /**
+     * =========================================================================
+     * MODUL TRANSAKSI 1: SETORAN TUNAI DI LOKET TELLER (DEPOSIT)
+     * =========================================================================
+     * Alur Kerja Sistem Saat Presentasi:
+     * 1. Validasi Input: Pastikan rekening nasabah terdaftar & nominal >= Rp 1.000.
+     * 2. Proteksi Closing: Tolak setoran jika teller sudah melakukan closing kas hari ini.
+     * 3. Row Locking (Pessimistic Lock): 'lockForUpdate()' untuk mencegah saldo ganda (race condition).
+     * 4. Validasi Setoran Awal: Jika rekening baru (saldo Rp 0), wajib setoran awal minimal Rp 10.000.
+     * 5. Snapshot Data: Simpan nama & no. rekening pada tabel transaksi agar riwayat tetap valid 
+     *    meskipun data siswa suatu saat diubah/dihapus.
+     * 6. Double-Entry Akuntansi (Rubrik UKK):
+     *    - Debet  101 (Kas Loket Teller)      -> Uang tunai fisik teller bertambah (+)
+     *    - Kredit 201 (Simpanan Siswa)        -> Kewajiban simpanan bank kepada nasabah bertambah (+)
+     * =========================================================================
+     */
     public function deposit(Request $request)
     {
         $targetId = $request->saver_id ?? $request->customer_id;
         $request->merge(['saver_id' => $targetId]);
 
+        // Langkah 1: Validasi form request
         $validator = Validator::make($request->all(), [
             'saver_id'    => 'required|exists:savers,id',
             'amount'      => 'required|integer|min:1000',
@@ -377,6 +394,7 @@ class TellerController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
+        // Langkah 2: Cek status closing harian teller
         $todayClosing = $this->checkTodayClosingStatus($request->user()->id);
         if ($todayClosing) {
             $statusLabel = ($todayClosing->status === 'approved') ? 'DISETUJUI' : 'SELESAI DIREKONSILIASI';
@@ -388,7 +406,7 @@ class TellerController extends Controller
 
         DB::beginTransaction();
         try {
-            // Lock row saver untuk mencegah race condition
+            // Langkah 3: Kunci baris data penabung (Pessimistic Locking)
             $saver = Saver::where('id', $targetId)->lockForUpdate()->first();
 
             if ($saver->status !== 'active') {
@@ -399,7 +417,7 @@ class TellerController extends Controller
             $amount = (int) $request->amount;
             $balanceBefore = (int) $saver->balance;
 
-            // Validasi Setoran Awal: Jika nasabah belum memiliki saldo (saldo Rp 0), setoran awal minimal Rp 10.000
+            // Langkah 4: Validasi saldo mengendap perdana (Minimal Rp 10.000)
             if ($balanceBefore === 0 && $amount < 10000) {
                 DB::rollBack();
                 return response()->json([
@@ -410,7 +428,7 @@ class TellerController extends Controller
 
             $balanceAfter = $balanceBefore + $amount;
 
-            // 1. Simpan Transaksi dengan Snapshot Kolom
+            // Langkah 5: Simpan Riwayat Transaksi Buku Tabungan (Dengan Snapshot Historis)
             $transCode = 'TRX-DEP-' . date('YmdHis') . '-' . rand(100, 999);
             $transaction = Transaction::create([
                 'transaction_code'        => $transCode,
@@ -426,11 +444,11 @@ class TellerController extends Controller
                 'description'             => $request->description ?? 'Setoran Tunai di Loket Teller',
             ]);
 
-            // 2. Update Saldo Penabung
+            // Langkah 6: Mutasi Tambah Saldo Nasabah
             $saver->update(['balance' => $balanceAfter]);
 
-            // 3. Rubrik 2.3: Double-Entry Jurnal Akuntansi (Debet 101 Kas / Kredit 201 Tabungan)
-            // Baris 1: Debet Kas Loket Teller (101)
+            // Langkah 7: Jurnal Akuntansi Berpasangan (Double-Entry Bookkeeping)
+            // Baris 1: Debet Kas Loket Teller (Akun 101) - Aset Kas Bertambah
             AccountingJournal::create([
                 'transaction_id' => $transaction->id,
                 'account_code'   => '101',
@@ -439,7 +457,7 @@ class TellerController extends Controller
                 'amount'         => $amount,
             ]);
 
-            // Baris 2: Kredit Tabungan Nasabah (201)
+            // Baris 2: Kredit Simpanan Tabungan Siswa (Akun 201) - Kewajiban Bertambah
             AccountingJournal::create([
                 'transaction_id' => $transaction->id,
                 'account_code'   => '201',
@@ -474,13 +492,33 @@ class TellerController extends Controller
     }
 
     /**
-     * 7. Eksekusi Penarikan Tunai (Withdrawal)
+     * =========================================================================
+     * MODUL TRANSAKSI 2: PENARIKAN TUNAI DI LOKET TELLER (WITHDRAWAL)
+     * =========================================================================
+     * Alur Kerja Sistem Saat Presentasi:
+     * 1. Validasi Input: Memeriksa saver_id, nominal penarikan, dan PIN 6-digit nasabah.
+     * 2. Proteksi Closing: Mencegah penarikan jika teller telah closing kas hari ini.
+     * 3. Row Locking: 'lockForUpdate()' mengunci record saldo nasabah selama proses transaksi.
+     * 4. Otorisasi PIN (Rubrik 3.1): Validasi hash 6-digit PIN nasabah (bukan password login).
+     * 5. Saldo Mengendap Rp 10.000: Saldo nasabah wajib bersisa minimal Rp 10.000.
+     *    Contoh: Saldo Rp 1.000.000 -> Maksimal tarik tunai adalah Rp 990.000.
+     * 6. Batas Langsung vs Perjanjian H-1:
+     *    - Penarikan <= Rp 1.000.000: Langsung diproses tanpa syarat perjanjian.
+     *    - Penarikan > Rp 1.000.000 : Wajib memiliki perjanjian H-1 yang sudah di-ACC teller.
+     * 7. Validasi Kas Fisik Laci Teller:
+     *    - Fisik Kas = Modal Awal (Cash Advance) + Setoran Hari Ini - Penarikan Hari Ini.
+     *    - Mencegah teller mengeluarkan uang melebihi ketersediaan fisik laci.
+     * 8. Double-Entry Akuntansi (Rubrik 2.3):
+     *    - Debet  201 (Simpanan Siswa)        -> Kewajiban bank kepada nasabah berkurang (-)
+     *    - Kredit 101 (Kas Loket Teller)      -> Uang tunai fisik teller berkurang (-)
+     * =========================================================================
      */
     public function withdraw(Request $request)
     {
         $targetId = $request->saver_id ?? $request->customer_id;
         $request->merge(['saver_id' => $targetId]);
 
+        // Langkah 1: Validasi form penarikan & PIN keamanan
         $validator = Validator::make($request->all(), [
             'saver_id'     => 'required|exists:savers,id',
             'amount'       => 'required|integer|min:1000',
@@ -492,6 +530,7 @@ class TellerController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
+        // Langkah 2: Cek status closing harian teller
         $todayClosing = $this->checkTodayClosingStatus($request->user()->id);
         if ($todayClosing) {
             $statusLabel = ($todayClosing->status === 'approved') ? 'DISETUJUI' : 'SELESAI DIREKONSILIASI';
@@ -503,6 +542,7 @@ class TellerController extends Controller
 
         DB::beginTransaction();
         try {
+            // Langkah 3: Kunci baris saldo penabung (Concurrency Control)
             $saver = Saver::where('id', $targetId)->lockForUpdate()->first();
 
             if ($saver->status !== 'active') {
@@ -510,7 +550,7 @@ class TellerController extends Controller
                 return response()->json(['success' => false, 'message' => 'Rekening nasabah ini sedang diblokir.'], 403);
             }
 
-            // A. Rubrik 3.1: Verifikasi 6-Digit PIN Keamanan Nasabah
+            // Langkah 4 (Rubrik 3.1): Otorisasi 6-Digit PIN Keamanan Nasabah (Menggunakan Hash Bcrypt)
             if (!Hash::check($request->security_pin, $saver->security_pin)) {
                 DB::rollBack();
                 return response()->json([
@@ -524,7 +564,7 @@ class TellerController extends Controller
             $minimumBalance = 10000;
             $maxDirectLimit = 1000000; // Batas penarikan langsung maksimal Rp 1.000.000
 
-            // B. Validasi Batas Saldo Mengendap Minimum Rp 10.000
+            // Langkah 5: Validasi Batas Saldo Mengendap Minimum Rp 10.000
             if ($balanceBefore === 0) {
                 DB::rollBack();
                 return response()->json([
@@ -552,12 +592,12 @@ class TellerController extends Controller
                 ], 422);
             }
 
-            // C. Validasi Batas Maksimal Penarikan Langsung (Rp 1.000.000) vs Wajib Perjanjian H-1
+            // Langkah 6: Validasi Penarikan Dana Besar (> Rp 1.000.000) Wajib Perjanjian H-1
             if ($amount > $maxDirectLimit) {
                 $hasValidAppointment = false;
                 $appointment = null;
 
-                // 1. Cek dari appointment_id jika dipilih di form
+                // 6a. Cek dari appointment_id jika dipilih di form loket
                 if ($request->filled('appointment_id')) {
                     $apt = WithdrawalAppointment::where('id', $request->appointment_id)
                         ->where('saver_id', $saver->id)
@@ -569,7 +609,7 @@ class TellerController extends Controller
                     }
                 }
 
-                // 2. Cek apakah ada perjanjian aktif di database yang dibuat minimal H-1
+                // 6b. Cek otomatis apakah ada janji di database yang sudah di-ACC minimal H-1
                 if (!$hasValidAppointment) {
                     $apt = WithdrawalAppointment::where('saver_id', $saver->id)
                         ->where('status', 'approved')
@@ -583,7 +623,7 @@ class TellerController extends Controller
                     }
                 }
 
-                // 3. Cek konfirmasi manual teller di loket (jika perjanjian H-1 dibuat lisan/nota)
+                // 6c. Cek konfirmasi manual teller di loket (jika janji dibuat secara lisan kemarin)
                 if (!$hasValidAppointment && $request->boolean('appointment_confirmed')) {
                     $manualDate = $request->appointment_date ? Carbon::parse($request->appointment_date)->startOfDay() : null;
                     if ($manualDate && $manualDate->lte(today()->subDay()->endOfDay())) {
@@ -600,6 +640,7 @@ class TellerController extends Controller
                     }
                 }
 
+                // Tolak jika penarikan > 1 Juta tidak memiliki janji H-1 yang sah
                 if (!$hasValidAppointment) {
                     $maxDirectPossible = min($maxDirectLimit, $maxAvailableBalance);
                     DB::rollBack();
@@ -616,9 +657,10 @@ class TellerController extends Controller
                 }
             }
 
+            // Hitung saldo akhir setelah penarikan
             $balanceAfter = $balanceBefore - $amount;
 
-            // C. Validasi Saldo Kas Fisik Laci Loket Teller (Mencegah Saldo Minus & Kasir Kehabisan Uang Fisik)
+            // Langkah 7: Validasi Saldo Kas Fisik Laci Loket Teller (Mencegah Kasir Kehabisan Uang Tunai)
             $tellerId = $request->user()->id;
             $today = today();
             $openingCash = (int) TellerCashAdvance::where('teller_id', $tellerId)
@@ -643,7 +685,7 @@ class TellerController extends Controller
                 ], 422);
             }
 
-            // 1. Simpan Transaksi dengan Snapshot Kolom
+            // Langkah 8: Simpan Transaksi Penarikan (Dengan Snapshot Data Historis)
             $transCode = 'TRX-WDR-' . date('YmdHis') . '-' . rand(100, 999);
             $transaction = Transaction::create([
                 'transaction_code'        => $transCode,
@@ -659,11 +701,11 @@ class TellerController extends Controller
                 'description'             => $request->description ?? 'Penarikan Tunai di Loket Teller',
             ]);
 
-            // 2. Potong Saldo Penabung
+            // Langkah 9: Potong Saldo Rekening Penabung
             $saver->update(['balance' => $balanceAfter]);
 
-            // 3. Rubrik 2.3: Double-Entry Jurnal Akuntansi (Debet 201 Tabungan / Kredit 101 Kas)
-            // Baris 1: Debet Tabungan Nasabah (201)
+            // Langkah 10 (Rubrik 2.3): Double-Entry Jurnal Akuntansi (Debet 201 Simpanan / Kredit 101 Kas)
+            // Baris 1: Debet Tabungan Nasabah (Akun 201) - Kewajiban Berkurang
             AccountingJournal::create([
                 'transaction_id' => $transaction->id,
                 'account_code'   => '201',
@@ -672,7 +714,7 @@ class TellerController extends Controller
                 'amount'         => $amount,
             ]);
 
-            // Baris 2: Kredit Kas Loket Teller (101)
+            // Baris 2: Kredit Kas Loket Teller (Akun 101) - Aset Kas Keluar
             AccountingJournal::create([
                 'transaction_id' => $transaction->id,
                 'account_code'   => '101',

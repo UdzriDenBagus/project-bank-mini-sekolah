@@ -206,7 +206,24 @@ class CustomerPortalController extends Controller
     }
 
     /**
-     * 5. Nasabah Mengajukan Perjanjian Penarikan Dana Besar (> Rp 1.000.000, Wajib H-1)
+     * =========================================================================
+     * MODUL NASABAH: PENGAJUAN PERJANJIAN PENARIKAN DANA (> RP 1 JUTA, H-1)
+     * =========================================================================
+     * Alur Kerja Sistem Saat Presentasi:
+     * 1. Cek Rekening: Pastikan nasabah terotentikasi dan rekeningnya aktif.
+     * 2. Cek Saldo Awal: Jika saldo <= Rp 1.000.000, pengajuan ditolak karena nasabah
+     *    bisa langsung tarik di teller (tidak butuh perjanjian).
+     * 3. Validasi Form:
+     *    - 'amount': Minimal Rp 1.000.001 (khusus penarikan dana di atas 1 juta).
+     *    - 'withdrawal_date': Wajib minimal H-1 ('after:today' / minimal besok).
+     * 4. Validasi Saldo Mengendap Rp 10.000:
+     *    - Nominal penarikan tidak boleh melebihi ($balance - 10000).
+     * 5. Status Workflow:
+     *    - Dibuat dengan status 'pending' (Menunggu ACC Teller).
+     *    - Teller dapat melihat badge notifikasi di dashboard teller loket.
+     *    - Begitu di-ACC teller, status berubah menjadi 'approved'.
+     *    - Pada hari H (atau setelah H-1), nasabah datang ke loket untuk pencairan tunai.
+     * =========================================================================
      */
     public function createAppointment(Request $request)
     {
@@ -229,7 +246,7 @@ class CustomerPortalController extends Controller
         $heldBalance = 10000;
         $maxAvailable = max(0, $balance - $heldBalance);
 
-        // Aturan: Jika saldo nasabah di bawah 1 juta maka TIDAK BISA melakukan pengajuan penarikan
+        // Langkah 1: Jika saldo nasabah <= 1 juta, tidak diizinkan membuat janji (cukup tarik langsung di loket)
         if ($balance <= 1000000 || $maxAvailable <= 1000000) {
             return response()->json([
                 'success' => false,
@@ -237,6 +254,7 @@ class CustomerPortalController extends Controller
             ], 422);
         }
 
+        // Langkah 2: Validasi input form (Nominal > 1 Juta & Tanggal Minimal Besok / H-1)
         $validator = Validator::make($request->all(), [
             'amount'          => 'required|integer|min:1000001',
             'withdrawal_date' => 'required|date|after:today',
@@ -258,7 +276,7 @@ class CustomerPortalController extends Controller
 
         $amount = (int) $request->amount;
 
-        // Validasi Saldo Mengendap Rp 10.000
+        // Langkah 3: Validasi Saldo Mengendap Rp 10.000 (Saldo akhir tidak boleh < 10k)
         if ($amount > $maxAvailable) {
             return response()->json([
                 'success' => false,
@@ -266,14 +284,14 @@ class CustomerPortalController extends Controller
             ], 422);
         }
 
-        // Simpan permohonan dengan status pending (Menunggu ACC Teller)
+        // Langkah 4: Simpan permohonan ke database dengan status 'pending'
         $appointment = WithdrawalAppointment::create([
             'saver_id'         => $saver->id,
-            'teller_id'        => null, // Menunggu di-ACC Teller
+            'teller_id'        => null, // Diisi otomatis saat teller menekan tombol ACC
             'appointment_date' => now()->toDateString(),
             'withdrawal_date'  => $request->withdrawal_date,
             'amount'           => $amount,
-            'status'           => 'pending', // Menunggu ACC dari Teller
+            'status'           => 'pending', // Status awal: Menunggu ACC dari Teller
             'notes'            => $request->notes ?? 'Pengajuan mandiri via akun nasabah',
         ]);
 

@@ -19,9 +19,20 @@ use App\Models\PasswordResetRequest;
 class AuthController extends Controller
 {
     /**
-     * Revisi 2 & 4: Pintu Masuk Login Dijadikan 1 Setiap Role (Unified Login)
-     * Nasabah diberikan kata sandi (password) untuk login ke portal buku tabungan digital.
-     * PIN 6-digit tetap dipertahankan khusus untuk transaksi penarikan di teller.
+     * =========================================================================
+     * MODUL AUTENTIKASI: LOGIN SATU PINTU (UNIFIED LOGIN MULTI-ROLE)
+     * =========================================================================
+     * Alur Kerja Sistem Saat Presentasi:
+     * 1. Multi-Role Single Gateway: Halaman login tunggal melayani Admin, Teller, dan Nasabah Siswa.
+     *    Sistem secara pintar mendeteksi jenis akun berdasarkan input (Username/Email vs NIS/No Rekening).
+     * 2. Proteksi Brute-Force (Rate Limiting):
+     *    - Menggunakan Laravel 'RateLimiter' berbasis kombinasi input username & IP Address.
+     *    - Jika salah password 10 kali berturut-turut, sistem otomatis mengunci akun (Lockout) selama 30 menit.
+     * 3. Pemisahan Keamanan:
+     *    - Password Akun: Digunakan untuk autentikasi login ke Web Portal / Aplikasi Mobile Flutter.
+     *    - PIN Keamanan 6-Digit: Hanya digunakan oleh nasabah saat otorisasi penarikan uang di loket teller.
+     * 4. Multi-Token Sanctum: Memberikan token otentikasi REST API dengan ability role masing-masing.
+     * =========================================================================
      */
     public function loginUnified(Request $request)
     {
