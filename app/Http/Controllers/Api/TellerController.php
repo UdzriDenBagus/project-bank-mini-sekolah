@@ -616,7 +616,7 @@ class TellerController extends Controller
                 }
             }
 
-            $balanceAfter = $remainingBalance;
+            $balanceAfter = $balanceBefore - $amount;
 
             // C. Validasi Saldo Kas Fisik Laci Loket Teller (Mencegah Saldo Minus & Kasir Kehabisan Uang Fisik)
             $tellerId = $request->user()->id;
