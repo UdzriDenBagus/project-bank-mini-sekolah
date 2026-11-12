@@ -128,7 +128,7 @@
                     </button>
                     <span id="selectedBadge_members" class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold font-mono">0 Terpilih</span>
                     <button type="button" id="btnBulkDeleteMembers" onclick="bulkDeleteMembers()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition items-center gap-1 shadow-xs hidden" title="Hapus Anggota Terpilih yang Belum Menabung">
-                        🗑️ Hapus Terpilih
+                        Hapus Terpilih
                     </button>
                 </div>
             </div>
@@ -1524,7 +1524,7 @@
                             </span>
                         ` : ''}
                         <button onclick="deleteMember(${m.id}, '${safeName}', '${m.status}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition inline-flex items-center" title="Hapus Anggota yang Belum Menabung">
-                            🗑️ Hapus
+                            Hapus
                         </button>
                     </td>
                 </tr>
