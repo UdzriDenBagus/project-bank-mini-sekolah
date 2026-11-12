@@ -964,21 +964,26 @@ class AdminController extends Controller
         $query = AccountingJournal::with(['transaction.customer', 'transaction.user'])
                                   ->orderBy('id', 'desc');
 
+        $sumQuery = AccountingJournal::query();
+
         if ($request->filled('date')) {
             $query->whereDate('created_at', $request->date);
+            $sumQuery->whereDate('created_at', $request->date);
         }
 
-        $journals = $query->paginate(20);
+        $journals = $query->limit(500)->get();
 
-        $totalDebit  = AccountingJournal::where('position', 'debit')->sum('amount');
-        $totalCredit = AccountingJournal::where('position', 'credit')->sum('amount');
+        $totalDebit   = (int) (clone $sumQuery)->where('position', 'debit')->sum('amount');
+        $totalCredit  = (int) (clone $sumQuery)->where('position', 'credit')->sum('amount');
+        $totalNominal = (int) (clone $sumQuery)->sum('amount');
 
         return response()->json([
             'success' => true,
             'summary' => [
-                'total_debit'  => (int) $totalDebit,
-                'total_credit' => (int) $totalCredit,
-                'is_balanced'  => ($totalDebit === $totalCredit),
+                'total_debit'   => $totalDebit,
+                'total_credit'  => $totalCredit,
+                'total_nominal' => $totalNominal,
+                'is_balanced'   => ($totalDebit === $totalCredit),
             ],
             'data'    => $journals
         ]);

@@ -342,6 +342,42 @@
                     <tbody id="journalsTableBody">
                         <tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">Memuat jurnal...</td></tr>
                     </tbody>
+                    <tfoot id="journalsTableFoot" class="border-t-2 border-slate-300 bg-slate-50 text-xs">
+                        <tr class="border-b border-slate-200 text-slate-700">
+                            <td colspan="3" class="py-2.5 px-4 font-bold text-slate-600">
+                                <span>Subtotal Debet</span>
+                                <span id="footJournalDebitCount" class="text-[11px] text-slate-400 font-normal ml-1">(0 baris)</span>
+                            </td>
+                            <td class="py-2.5 px-4 text-center">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-800">DEBET</span>
+                            </td>
+                            <td id="footTotalDebitNominal" class="py-2.5 px-4 text-right font-bold text-blue-700 font-mono">Rp 0</td>
+                        </tr>
+                        <tr class="border-b border-slate-200 text-slate-700">
+                            <td colspan="3" class="py-2.5 px-4 font-bold text-slate-600">
+                                <span>Subtotal Kredit</span>
+                                <span id="footJournalCreditCount" class="text-[11px] text-slate-400 font-normal ml-1">(0 baris)</span>
+                            </td>
+                            <td class="py-2.5 px-4 text-center">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800">KREDIT</span>
+                            </td>
+                            <td id="footTotalCreditNominal" class="py-2.5 px-4 text-right font-bold text-amber-700 font-mono">Rp 0</td>
+                        </tr>
+                        <tr class="bg-indigo-50/70 font-black text-slate-800">
+                            <td colspan="3" class="py-3 px-4 text-xs uppercase tracking-wide text-slate-800">
+                                <span>TOTAL NOMINAL BUKU BESAR JURNAL</span>
+                                <span id="footJournalFilterNote" class="text-[11px] text-indigo-700 font-semibold normal-case ml-1">(0 baris terfilter)</span>
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <span id="footJournalBalanceBadge" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                                    BALANCE
+                                </span>
+                            </td>
+                            <td id="footGrandTotalNominal" class="py-3 px-4 text-right text-sm font-black text-indigo-950 font-mono">
+                                Rp 0
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             <div id="journalsPagination"></div>
@@ -2185,6 +2221,79 @@
         const p = adminPagination.journals;
         const total = p.data.length;
 
+        // Hitung Total Nominal berdasarkan data yang sedang tampil / terfilter
+        let filteredDebit = 0;
+        let filteredCredit = 0;
+        let countDebit = 0;
+        let countCredit = 0;
+
+        p.data.forEach(j => {
+            const amt = Number(j.amount) || 0;
+            if (j.position === 'debit') {
+                filteredDebit += amt;
+                countDebit++;
+            } else if (j.position === 'credit') {
+                filteredCredit += amt;
+                countCredit++;
+            }
+        });
+
+        const grandTotal = filteredDebit + filteredCredit;
+
+        // Update nilai di bagian bawah tabel (tfoot)
+        const elFootDebit = document.getElementById('footTotalDebitNominal');
+        const elFootCredit = document.getElementById('footTotalCreditNominal');
+        const elFootGrand = document.getElementById('footGrandTotalNominal');
+        const elFootDebitCount = document.getElementById('footJournalDebitCount');
+        const elFootCreditCount = document.getElementById('footJournalCreditCount');
+        const elFootNote = document.getElementById('footJournalFilterNote');
+        const elFootBadge = document.getElementById('footJournalBalanceBadge');
+
+        if (elFootDebit) elFootDebit.innerText = `Rp ${filteredDebit.toLocaleString('id-ID')}`;
+        if (elFootCredit) elFootCredit.innerText = `Rp ${filteredCredit.toLocaleString('id-ID')}`;
+        if (elFootGrand) elFootGrand.innerText = `Rp ${grandTotal.toLocaleString('id-ID')}`;
+        if (elFootDebitCount) elFootDebitCount.innerText = `(${countDebit} baris)`;
+        if (elFootCreditCount) elFootCreditCount.innerText = `(${countCredit} baris)`;
+        if (elFootNote) elFootNote.innerText = `(${total} baris terfilter)`;
+
+        if (elFootBadge) {
+            if (total === 0) {
+                elFootBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-500';
+                elFootBadge.innerText = 'KOSONG';
+            } else if (filteredDebit === filteredCredit) {
+                elFootBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800';
+                elFootBadge.innerText = 'BALANCE';
+            } else {
+                const diff = Math.abs(filteredDebit - filteredCredit);
+                elFootBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-800';
+                elFootBadge.innerText = `SELISIH Rp ${diff.toLocaleString('id-ID')}`;
+            }
+        }
+
+        // Juga perbarui card ringkasan di atas tabel agar selalu selaras dengan filter
+        const elTopDebit = document.getElementById('totalDebitText');
+        const elTopCredit = document.getElementById('totalCreditText');
+        const card = document.getElementById('balanceCard');
+        const txt = document.getElementById('balanceStatusText');
+
+        if (elTopDebit) elTopDebit.innerText = `Rp ${filteredDebit.toLocaleString('id-ID')}`;
+        if (elTopCredit) elTopCredit.innerText = `Rp ${filteredCredit.toLocaleString('id-ID')}`;
+        if (card && txt) {
+            if (total === 0) {
+                card.className = 'bg-slate-50 rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between';
+                txt.innerText = 'DATA KOSONG';
+                txt.className = 'text-xl font-black text-slate-500 mt-1';
+            } else if (filteredDebit === filteredCredit) {
+                card.className = 'bg-emerald-50 rounded-2xl p-5 border border-emerald-200 shadow-sm flex items-center justify-between';
+                txt.innerText = 'BALANCE (SEIMBANG)';
+                txt.className = 'text-xl font-black text-emerald-800 mt-1';
+            } else {
+                card.className = 'bg-rose-50 rounded-2xl p-5 border border-rose-200 shadow-sm flex items-center justify-between';
+                txt.innerText = 'TIDAK BALANCE (SELISIH)';
+                txt.className = 'text-xl font-black text-rose-800 mt-1';
+            }
+        }
+
         if (total === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">Tidak ada data jurnal akuntansi.</td></tr>';
             renderAdminPagination('journals', 'journalsPagination');
@@ -2204,7 +2313,7 @@
                         ${j.position}
                     </span>
                 </td>
-                <td class="py-3 px-4 text-right font-black text-slate-900">Rp ${Number(j.amount).toLocaleString('id-ID')}</td>
+                <td class="py-3 px-4 text-right font-black text-slate-900 font-mono">Rp ${Number(j.amount).toLocaleString('id-ID')}</td>
             </tr>
         `).join('');
 
