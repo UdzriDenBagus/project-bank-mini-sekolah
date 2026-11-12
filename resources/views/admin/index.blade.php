@@ -763,7 +763,8 @@
         <form onsubmit="submitAddMember(event)" class="space-y-3 text-sm">
             <div>
                 <label class="block text-xs font-bold text-slate-600 uppercase mb-1">NIS (Nomor Induk Siswa)</label>
-                <input type="text" id="addMemberNis" required placeholder="Contoh: 1001" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                <input type="text" id="addMemberNis" required maxlength="12" inputmode="numeric" pattern="[0-9]{1,12}" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 12)" placeholder="Maksimal 12 digit angka, contoh: 1001" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+                <span class="text-[10px] text-slate-400 mt-0.5 block">Hanya angka, maksimal 12 digit.</span>
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap Siswa</label>
@@ -1649,8 +1650,20 @@
 
     async function submitAddMember(e) {
         e.preventDefault();
+        const nis = document.getElementById('addMemberNis').value.trim();
+
+        if (!/^\d{1,12}$/.test(nis)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'NIS Tidak Valid',
+                text: 'Nomor Induk Siswa (NIS) hanya boleh berupa angka dan maksimal 12 digit!',
+                confirmButtonColor: '#4f46e5'
+            });
+            return;
+        }
+
         const payload = {
-            nis: document.getElementById('addMemberNis').value,
+            nis: nis,
             name: document.getElementById('addMemberName').value,
             class_name: document.getElementById('addMemberClass').value,
             graduation_year: document.getElementById('addMemberGradYear').value,

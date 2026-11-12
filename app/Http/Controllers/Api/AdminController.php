@@ -153,12 +153,16 @@ class AdminController extends Controller
     public function storeMember(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nis'             => 'required|string|unique:members,nis|max:30',
+            'nis'             => ['required', 'string', 'regex:/^[0-9]{1,12}$/', 'unique:members,nis'],
             'name'            => 'required|string|max:100',
             'class_name'      => 'required|string|max:50',
             'email'           => 'nullable|email|max:100',
             'graduation_year' => 'nullable|digits:4|integer',
             'password'        => 'nullable|string|min:6',
+        ], [
+            'nis.required' => 'Nomor Induk Siswa (NIS) wajib diisi.',
+            'nis.regex'    => 'NIS hanya boleh berupa angka dan maksimal 12 digit.',
+            'nis.unique'   => 'NIS sudah terdaftar untuk anggota siswa lain.',
         ]);
 
         if ($validator->fails()) {
@@ -378,6 +382,13 @@ class AdminController extends Controller
                     continue;
                 }
 
+                // Validasi format NIS wajib angka dan maksimal 12 digit
+                if (!preg_match('/^[0-9]{1,12}$/', $nis)) {
+                    $skipped++;
+                    $errors[] = "Baris " . ($i + 1) . ": NIS '{$nis}' tidak valid (wajib berupa angka dan maksimal 12 digit).";
+                    continue;
+                }
+
                 if (empty($name)) {
                     $skipped++;
                     $errors[] = "Baris " . ($i + 1) . " (NIS: {$nis}): Nama Siswa tidak boleh kosong.";
@@ -498,12 +509,16 @@ class AdminController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'nis'             => 'required|string|max:30|unique:members,nis,' . $id,
+            'nis'             => ['required', 'string', 'regex:/^[0-9]{1,12}$/', 'unique:members,nis,' . $id],
             'name'            => 'required|string|max:100',
             'class_name'      => 'required|string|max:50',
             'email'           => 'nullable|email|max:100',
             'graduation_year' => 'nullable|digits:4|integer',
             'password'        => 'nullable|string|min:6',
+        ], [
+            'nis.required' => 'Nomor Induk Siswa (NIS) wajib diisi.',
+            'nis.regex'    => 'NIS hanya boleh berupa angka dan maksimal 12 digit.',
+            'nis.unique'   => 'NIS sudah terdaftar untuk anggota siswa lain.',
         ]);
 
         if ($validator->fails()) {
