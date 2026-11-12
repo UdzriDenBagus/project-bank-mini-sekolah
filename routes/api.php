@@ -56,6 +56,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::post('/members/{id}/activate', [AdminController::class, 'activateMember']);
     Route::put('/members/{id}', [AdminController::class, 'updateMember']);
     Route::delete('/members/{id}', [AdminController::class, 'destroyMember']);
+    Route::post('/members/bulk-delete', [AdminController::class, 'bulkDestroyMembers']);
     Route::post('/members/{id}/hold-back', [AdminController::class, 'holdBackMember']);
 
     // 2. Master Penabung (Revisi 6: Aksi hapus diubah status aktif / non-aktif)

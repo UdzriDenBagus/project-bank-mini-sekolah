@@ -127,6 +127,9 @@
                     <button type="button" onclick="deselectAll('members')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition flex items-center"> Batalkan
                     </button>
                     <span id="selectedBadge_members" class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold font-mono">0 Terpilih</span>
+                    <button type="button" id="btnBulkDeleteMembers" onclick="bulkDeleteMembers()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition items-center gap-1 shadow-xs hidden" title="Hapus Anggota Terpilih yang Belum Menabung">
+                        🗑️ Hapus Terpilih
+                    </button>
                 </div>
             </div>
 
@@ -1120,6 +1123,14 @@
             }
         }
 
+        if (key === 'members') {
+            const btnBulk = document.getElementById('btnBulkDeleteMembers');
+            if (btnBulk) {
+                btnBulk.classList.toggle('hidden', count === 0);
+                btnBulk.classList.toggle('inline-flex', count > 0);
+            }
+        }
+
         const chkAll = document.getElementById(`checkAll_${key}`);
         if (chkAll) {
             const rowCheckboxes = document.querySelectorAll(`.row-chk-${key}`);
@@ -1512,6 +1523,9 @@
                             <span class="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-semibold inline-flex items-center" title="Aktivasi rekening nasabah dilakukan oleh Petugas Teller"> Aktivasi di Teller
                             </span>
                         ` : ''}
+                        <button onclick="deleteMember(${m.id}, '${safeName}', '${m.status}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition inline-flex items-center" title="Hapus Anggota yang Belum Menabung">
+                            🗑️ Hapus
+                        </button>
                     </td>
                 </tr>
             `;
@@ -1888,11 +1902,90 @@
     }
 
     async function deleteMember(id, name, status) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Tidak Dapat Dihapus',
-            text: 'Kebijakan Sistem: Data anggota yang sudah diinput tidak dapat dihapus.'
+        const isInactive = (status !== 'active_account');
+        const confirmHtml = isInactive
+            ? `Anggota siswa <b>${name}</b> belum mengaktifkan rekening dan belum menabung.<br><span class="text-xs text-slate-500">Yakin ingin menghapus anggota ini? Data akan dipindahkan ke Data Sampah (Trash).</span>`
+            : `Yakin ingin menghapus anggota <b>${name}</b>?<br><span class="text-xs text-slate-500">Sistem hanya mengizinkan penghapusan jika anggota belum memiliki saldo/riwayat tabungan.</span>`;
+
+        const result = await Swal.fire({
+            title: 'Hapus Anggota Siswa?',
+            html: confirmHtml,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Hapus Anggota',
+            cancelButtonText: 'Batal'
         });
+
+        if (!result.isConfirmed) return;
+
+        Swal.fire({ title: 'Menghapus Anggota...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const res = await fetchAPI(`/admin/members/${id}`, { method: 'DELETE' });
+        if (res && res.data && res.data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Dihapus',
+                text: res.data.message,
+                confirmButtonColor: '#4f46e5'
+            });
+            adminSelectedItems.members.delete(String(id));
+            loadMembers();
+            if (typeof loadTrash === 'function') loadTrash();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menghapus',
+                text: (res && res.data && res.data.message) || 'Terjadi kesalahan saat menghapus data anggota.'
+            });
+        }
+    }
+
+    async function bulkDeleteMembers() {
+        const ids = Array.from(adminSelectedItems.members);
+        if (ids.length === 0) {
+            Swal.fire('Peringatan', 'Silakan pilih setidaknya satu anggota siswa terlebih dahulu!', 'warning');
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: `Hapus ${ids.length} Anggota Terpilih?`,
+            html: `Yakin ingin menghapus <b>${ids.length}</b> anggota siswa terpilih yang belum kunjung menabung?<br><small class="text-slate-500">Anggota yang sudah memiliki saldo tabungan aktif otomatis akan dilewati untuk melindungi buku kas.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: `Ya, Hapus (${ids.length})`,
+            cancelButtonText: 'Batal'
+        });
+
+        if (!result.isConfirmed) return;
+
+        Swal.fire({ title: 'Menghapus Anggota Terpilih...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const res = await fetchAPI('/admin/members/bulk-delete', {
+            method: 'POST',
+            body: JSON.stringify({ ids: ids })
+        });
+
+        if (res && res.data && res.data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Proses Selesai',
+                text: res.data.message,
+                confirmButtonColor: '#4f46e5'
+            });
+            deselectAll('members');
+            loadMembers();
+            if (typeof loadTrash === 'function') loadTrash();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menghapus',
+                text: (res && res.data && res.data.message) || 'Terjadi kesalahan sistem saat menghapus anggota terpilih.'
+            });
+        }
     }
 
     // =========================================================

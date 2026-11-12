@@ -707,12 +707,95 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Hapus Data Anggota Siswa (Khusus bagi anggota yang tidak kunjung menabung)
+     */
     public function destroyMember($id)
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'Kebijakan Sistem: Data anggota yang sudah di-input tidak dapat dihapus.'
-        ], 403);
+        $member = Member::with('saver.transactions')->find($id);
+        if (!$member) {
+            return response()->json(['success' => false, 'message' => 'Data anggota siswa tidak ditemukan.'], 404);
+        }
+
+        $saver = $member->saver;
+        // Jika anggota sudah menjadi penabung aktif dan memiliki saldo atau mutasi transaksi tabungan
+        if ($saver && ($saver->balance > 0 || $saver->transactions()->count() > 0)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anggota siswa [' . $member->name . '] sudah berstatus penabung aktif dan memiliki saldo tabungan sebesar Rp ' . number_format($saver->balance, 0, ',', '.') . '. Rekening yang memiliki riwayat tabungan tidak dapat dihapus demi integritas buku kas perbankan.'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            if ($saver) {
+                $saver->delete(); // Soft delete saver
+            }
+            $member->delete(); // Soft delete member (masuk ke Data Sampah / Trash)
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Anggota siswa [' . $member->name . '] yang belum menabung berhasil dihapus dan dipindahkan ke Data Sampah (Trash).'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus anggota siswa: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Hapus Massal Anggota Siswa Terpilih (Bulk Delete untuk yang belum menabung)
+     */
+    public function bulkDestroyMembers(Request $request)
+    {
+        $ids = $request->ids;
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada anggota siswa yang dipilih untuk dihapus.'], 422);
+        }
+
+        $members = Member::with('saver.transactions')->whereIn('id', $ids)->get();
+        if ($members->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Data anggota yang dipilih tidak ditemukan.'], 404);
+        }
+
+        $deletedCount = 0;
+        $skippedCount = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($members as $member) {
+                $saver = $member->saver;
+                // Lewati anggota yang sudah memiliki saldo tabungan atau riwayat transaksi
+                if ($saver && ($saver->balance > 0 || $saver->transactions()->count() > 0)) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                if ($saver) {
+                    $saver->delete();
+                }
+                $member->delete();
+                $deletedCount++;
+            }
+
+            DB::commit();
+
+            $msg = "Berhasil menghapus {$deletedCount} anggota siswa yang belum menabung.";
+            if ($skippedCount > 0) {
+                $msg .= " Sebanyak {$skippedCount} anggota dilewati karena sudah memiliki saldo/transaksi tabungan aktif.";
+            }
+
+            return response()->json([
+                'success'       => true,
+                'message'       => $msg,
+                'deleted_count' => $deletedCount,
+                'skipped_count' => $skippedCount,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus anggota: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
